@@ -55,34 +55,51 @@ class AdminPage {
 	 * Hooks page registration into wp-admin.
 	 */
 	public function register(): void {
-		\add_action( 'admin_menu', array( $this, 'register_page' ) );
+		\add_action( 'admin_menu', array( $this, 'register_pages' ) );
 	}
 
 	/**
-	 * Registers Users > Daily Digest menu page.
+	 * Registers top-level Daily Digest menu and submenus.
 	 */
-	public function register_page(): void {
-		\add_users_page(
+	public function register_pages(): void {
+		\add_menu_page(
 			\__( 'Daily Digest', 'daily-digest' ),
 			\__( 'Daily Digest', 'daily-digest' ),
 			'read',
 			'daily-digest',
-			array( $this, 'render_page' )
+			array( $this, 'render_overview_page' ),
+			'dashicons-list-view',
+			2.1
+		);
+
+		\add_submenu_page(
+			'daily-digest',
+			\__( 'Overview', 'daily-digest' ),
+			\__( 'Overview', 'daily-digest' ),
+			'read',
+			'daily-digest',
+			array( $this, 'render_overview_page' )
+		);
+
+		\add_submenu_page(
+			'daily-digest',
+			\__( 'Settings', 'daily-digest' ),
+			\__( 'Settings', 'daily-digest' ),
+			'read',
+			'daily-digest-settings',
+			array( $this, 'render_settings_page' )
 		);
 	}
 
 	/**
-	 * Renders settings and digest for the current user.
+	 * Renders digest overview for the current user.
 	 */
-	public function render_page(): void {
+	public function render_overview_page(): void {
 		if ( ! \is_user_logged_in() ) {
 			\wp_die( \esc_html__( 'You must be logged in to view this page.', 'daily-digest' ) );
 		}
 
 		$current_user_id = \get_current_user_id();
-		$this->maybe_save_settings( $current_user_id );
-
-		$current_settings = $this->user_settings->get_for_user( $current_user_id );
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only filter input that does not change data.
 		$days         = isset( $_GET['days'] ) ? \max( 1, \absint( $_GET['days'] ) ) : 1;
 		$digest_items = $this->digest_service->get_digest_for_user(
@@ -93,45 +110,19 @@ class AdminPage {
 		);
 		?>
 		<div class="wrap">
-			<h1><?php \esc_html_e( 'Daily Digest', 'daily-digest' ); ?></h1>
-			<p><?php \esc_html_e( 'Connect providers and view a unified activity digest.', 'daily-digest' ); ?></p>
+			<h1>
+				<?php \esc_html_e( 'Daily Digest Overview', 'daily-digest' ); ?>
+				<a href="<?php echo \esc_url( \admin_url( 'admin.php?page=daily-digest-settings' ) ); ?>" class="page-title-action">
+					<?php \esc_html_e( 'Settings', 'daily-digest' ); ?>
+				</a>
+			</h1>
+			<p>
+				<?php
+				echo \esc_html__( 'View your unified activity digest below.', 'daily-digest' ) . ' ';
+				echo '<a href="' . \esc_url( \admin_url( 'admin.php?page=daily-digest-settings' ) ) . '">' . \esc_html__( 'Configure providers in Settings.', 'daily-digest' ) . '</a>';
+				?>
+			</p>
 
-			<h2><?php \esc_html_e( 'Provider Settings', 'daily-digest' ); ?></h2>
-			<form method="post">
-				<?php \wp_nonce_field( 'daily_digest_save_settings', 'daily_digest_nonce' ); ?>
-				<table class="form-table" role="presentation">
-					<tbody>
-						<?php foreach ( $this->provider_registry->all() as $provider ) : ?>
-							<?php
-							$slug              = $provider->get_slug();
-							$provider_settings = $current_settings[ $slug ] ?? array();
-							$enabled           = ! empty( $provider_settings['enabled'] );
-							$fields            = $provider_settings['fields'] ?? array();
-							?>
-							<tr>
-								<th scope="row"><?php echo \esc_html( $provider->get_name() ); ?></th>
-								<td>
-									<label>
-										<input type="checkbox" name="daily_digest_settings[<?php echo \esc_attr( $slug ); ?>][enabled]" value="1" <?php \checked( $enabled ); ?> />
-										<?php \esc_html_e( 'Enable provider', 'daily-digest' ); ?>
-									</label>
-									<?php foreach ( $provider->get_fields() as $field_key => $field_label ) : ?>
-										<p>
-											<label>
-												<?php echo \esc_html( $field_label ); ?><br />
-												<input class="regular-text" type="text" name="daily_digest_settings[<?php echo \esc_attr( $slug ); ?>][fields][<?php echo \esc_attr( $field_key ); ?>]" value="<?php echo \esc_attr( $fields[ $field_key ] ?? '' ); ?>" />
-											</label>
-										</p>
-									<?php endforeach; ?>
-								</td>
-							</tr>
-						<?php endforeach; ?>
-					</tbody>
-				</table>
-				<?php \submit_button( \__( 'Save Settings', 'daily-digest' ) ); ?>
-			</form>
-
-			<hr />
 			<h2><?php \esc_html_e( 'Digest', 'daily-digest' ); ?></h2>
 			<form method="get" style="margin-bottom: 1em;">
 				<input type="hidden" name="page" value="daily-digest" />
@@ -174,6 +165,59 @@ class AdminPage {
 					</tbody>
 				</table>
 			<?php endif; ?>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Renders provider settings page for the current user.
+	 */
+	public function render_settings_page(): void {
+		if ( ! \is_user_logged_in() ) {
+			\wp_die( \esc_html__( 'You must be logged in to view this page.', 'daily-digest' ) );
+		}
+
+		$current_user_id = \get_current_user_id();
+		$this->maybe_save_settings( $current_user_id );
+		$current_settings = $this->user_settings->get_for_user( $current_user_id );
+		?>
+		<div class="wrap">
+			<h1><?php \esc_html_e( 'Daily Digest Settings', 'daily-digest' ); ?></h1>
+			<p><?php \esc_html_e( 'Enable and configure providers for your digest.', 'daily-digest' ); ?></p>
+
+			<form method="post">
+				<?php \wp_nonce_field( 'daily_digest_save_settings', 'daily_digest_nonce' ); ?>
+				<table class="form-table" role="presentation">
+					<tbody>
+						<?php foreach ( $this->provider_registry->all() as $provider ) : ?>
+							<?php
+							$slug              = $provider->get_slug();
+							$provider_settings = $current_settings[ $slug ] ?? array();
+							$enabled           = ! empty( $provider_settings['enabled'] );
+							$fields            = $provider_settings['fields'] ?? array();
+							?>
+							<tr>
+								<th scope="row"><?php echo \esc_html( $provider->get_name() ); ?></th>
+								<td>
+									<label>
+										<input type="checkbox" name="daily_digest_settings[<?php echo \esc_attr( $slug ); ?>][enabled]" value="1" <?php \checked( $enabled ); ?> />
+										<?php \esc_html_e( 'Enable provider', 'daily-digest' ); ?>
+									</label>
+									<?php foreach ( $provider->get_fields() as $field_key => $field_label ) : ?>
+										<p>
+											<label>
+												<?php echo \esc_html( $field_label ); ?><br />
+												<input class="regular-text" type="text" name="daily_digest_settings[<?php echo \esc_attr( $slug ); ?>][fields][<?php echo \esc_attr( $field_key ); ?>]" value="<?php echo \esc_attr( $fields[ $field_key ] ?? '' ); ?>" />
+											</label>
+										</p>
+									<?php endforeach; ?>
+								</td>
+							</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+				<?php \submit_button( \__( 'Save Settings', 'daily-digest' ) ); ?>
+			</form>
 		</div>
 		<?php
 	}

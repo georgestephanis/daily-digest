@@ -192,20 +192,6 @@ class AdminPage {
 				'currentUser' => \get_current_user_id(),
 				'initialDays' => $days,
 				'settingsUrl' => \admin_url( 'admin.php?page=daily-digest-settings' ),
-				'i18n'        => array(
-					'digestTitle' => \__( 'Digest', 'daily-digest' ),
-					'daysLabel'   => \__( 'Window (days):', 'daily-digest' ),
-					'refresh'     => \__( 'Refresh Digest', 'daily-digest' ),
-					'loading'     => \__( 'Loading activity…', 'daily-digest' ),
-					'loadError'   => \__( 'Unable to load digest data.', 'daily-digest' ),
-					'noItems'     => \__( 'No activity found for enabled providers.', 'daily-digest' ),
-					'time'        => \__( 'Time', 'daily-digest' ),
-					'provider'    => \__( 'Provider', 'daily-digest' ),
-					'type'        => \__( 'Type', 'daily-digest' ),
-					'title'       => \__( 'Title', 'daily-digest' ),
-					'summary'     => \__( 'Summary', 'daily-digest' ),
-					'openItem'    => \__( 'Open item', 'daily-digest' ),
-				),
 			);
 
 			\wp_add_inline_script(
@@ -219,21 +205,6 @@ class AdminPage {
 			$logs_page_config = array(
 				'restRoot'  => \esc_url_raw( \rest_url( 'daily-digest/v1' ) ),
 				'restNonce' => \wp_create_nonce( 'wp_rest' ),
-				'i18n'      => array(
-					'viewerTitle' => \__( 'Log Viewer', 'daily-digest' ),
-					'refresh'     => \__( 'Refresh Logs', 'daily-digest' ),
-					'loading'     => \__( 'Loading logs…', 'daily-digest' ),
-					'loadError'   => \__( 'Unable to load logs.', 'daily-digest' ),
-					'noLogs'      => \__( 'No log entries found.', 'daily-digest' ),
-					'timestamp'   => \__( 'Timestamp', 'daily-digest' ),
-					'provider'    => \__( 'Provider', 'daily-digest' ),
-					'context'     => \__( 'Context', 'daily-digest' ),
-					'method'      => \__( 'Method', 'daily-digest' ),
-					'status'      => \__( 'Status', 'daily-digest' ),
-					'url'         => \__( 'URL', 'daily-digest' ),
-					'summary'     => \__( 'Summary', 'daily-digest' ),
-					'openUrl'     => \__( 'Open URL', 'daily-digest' ),
-				),
 			);
 
 			\wp_add_inline_script(

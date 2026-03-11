@@ -3,23 +3,7 @@ import { __ } from "@wordpress/i18n";
 import { Button, Spinner } from "@wordpress/components";
 import { DataViews, filterSortAndPaginate } from "@wordpress/dataviews/wp";
 
-const defaultLogI18n = {
-  refresh: __("Refresh Logs", "daily-digest"),
-  loading: __("Loading logs…", "daily-digest"),
-  loadError: __("Unable to load logs.", "daily-digest"),
-  noLogs: __("No log entries found.", "daily-digest"),
-  timestamp: __("Timestamp", "daily-digest"),
-  provider: __("Provider", "daily-digest"),
-  context: __("Context", "daily-digest"),
-  method: __("Method", "daily-digest"),
-  status: __("Status", "daily-digest"),
-  url: __("URL", "daily-digest"),
-  summary: __("Summary", "daily-digest"),
-  openUrl: __("Open URL", "daily-digest"),
-};
-
 export const LogViewerApp = ({ config }) => {
-  const i18n = { ...defaultLogI18n, ...(config.i18n || {}) };
   const [rawItems, setRawItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
@@ -37,32 +21,32 @@ export const LogViewerApp = ({ config }) => {
     () => [
       {
         id: "timestamp",
-        label: i18n.timestamp,
+        label: __("Timestamp", "daily-digest"),
         enableGlobalSearch: true,
       },
       {
         id: "provider",
-        label: i18n.provider,
+        label: __("Provider", "daily-digest"),
         enableGlobalSearch: true,
       },
       {
         id: "context",
-        label: i18n.context,
+        label: __("Context", "daily-digest"),
         enableGlobalSearch: true,
       },
       {
         id: "method",
-        label: i18n.method,
+        label: __("Method", "daily-digest"),
         enableGlobalSearch: true,
       },
       {
         id: "status",
-        label: i18n.status,
+        label: __("Status", "daily-digest"),
         enableGlobalSearch: true,
       },
       {
         id: "url",
-        label: i18n.url,
+        label: __("URL", "daily-digest"),
         enableGlobalSearch: true,
         render: ({ item }) => {
           if (!item.url) {
@@ -78,11 +62,11 @@ export const LogViewerApp = ({ config }) => {
       },
       {
         id: "summary",
-        label: i18n.summary,
+        label: __("Summary", "daily-digest"),
         enableGlobalSearch: true,
       },
     ],
-    [i18n],
+    [],
   );
 
   const loadLogs = useCallback(async () => {
@@ -97,7 +81,7 @@ export const LogViewerApp = ({ config }) => {
 
     if (!response.ok) {
       setRawItems([]);
-      setErrorMessage(i18n.loadError);
+      setErrorMessage(__("Unable to load logs.", "daily-digest"));
       setIsLoading(false);
       return;
     }
@@ -105,13 +89,13 @@ export const LogViewerApp = ({ config }) => {
     const payload = await response.json();
     setRawItems(Array.isArray(payload.items) ? payload.items : []);
     setIsLoading(false);
-  }, [config.restNonce, config.restRoot, i18n.loadError]);
+  }, [config.restNonce, config.restRoot]);
 
   const actions = useMemo(
     () => [
       {
         id: "open-log-url",
-        label: i18n.openUrl,
+        label: __("Open URL", "daily-digest"),
         isEligible: (item) => Boolean(item?.url),
         callback: ([item]) => {
           if (item?.url) {
@@ -120,7 +104,7 @@ export const LogViewerApp = ({ config }) => {
         },
       },
     ],
-    [i18n.openUrl],
+    [],
   );
 
   const { data: processedData, paginationInfo } = useMemo(
@@ -136,18 +120,18 @@ export const LogViewerApp = ({ config }) => {
     <div>
       <div className="daily-digest-overview-controls">
         <Button variant="secondary" onClick={() => void loadLogs()}>
-          {i18n.refresh}
+          {__("Refresh Logs", "daily-digest")}
         </Button>
       </div>
 
       {isLoading && (
         <p>
-          <Spinner /> {i18n.loading}
+          <Spinner /> {__("Loading logs…", "daily-digest")}
         </p>
       )}
 
       {!isLoading && errorMessage && <p>{errorMessage}</p>}
-      {!isLoading && !errorMessage && rawItems.length === 0 && <p>{i18n.noLogs}</p>}
+      {!isLoading && !errorMessage && rawItems.length === 0 && <p>{__("No log entries found.", "daily-digest")}</p>}
 
       {!isLoading && !errorMessage && rawItems.length > 0 && (
         <DataViews

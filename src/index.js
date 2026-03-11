@@ -12,21 +12,6 @@ import { DataViews, filterSortAndPaginate } from "@wordpress/dataviews/wp";
 import { LogViewerApp } from "./log-viewer-app";
 import "./style.scss";
 
-const defaultI18n = {
-  digestTitle: __("Digest", "daily-digest"),
-  daysLabel: __("Window (days):", "daily-digest"),
-  refresh: __("Refresh Digest", "daily-digest"),
-  loading: __("Loading activity…", "daily-digest"),
-  loadError: __("Unable to load digest data.", "daily-digest"),
-  noItems: __("No activity found for enabled providers.", "daily-digest"),
-  time: __("Time", "daily-digest"),
-  provider: __("Provider", "daily-digest"),
-  type: __("Type", "daily-digest"),
-  title: __("Title", "daily-digest"),
-  summary: __("Summary", "daily-digest"),
-  openItem: __("Open item", "daily-digest"),
-};
-
 const defaultLayouts = {
   table: {
     layout: {
@@ -118,7 +103,6 @@ const loadPersistedView = ( config ) => {
 };
 
 const App = ({ config }) => {
-  const i18n = { ...defaultI18n, ...(config.i18n || {}) };
   const [days, setDays] = useState(() => loadInitialDays(config));
   const [rawItems, setRawItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -129,22 +113,22 @@ const App = ({ config }) => {
     () => [
       {
         id: "timestamp",
-        label: i18n.time,
+        label: __("Time", "daily-digest"),
         enableGlobalSearch: true,
       },
       {
         id: "provider",
-        label: i18n.provider,
+        label: __("Provider", "daily-digest"),
         enableGlobalSearch: true,
       },
       {
         id: "type",
-        label: i18n.type,
+        label: __("Type", "daily-digest"),
         enableGlobalSearch: true,
       },
       {
         id: "title",
-        label: i18n.title,
+        label: __("Title", "daily-digest"),
         enableGlobalSearch: true,
         render: ({ item }) => {
           if (item.url) {
@@ -159,11 +143,11 @@ const App = ({ config }) => {
       },
       {
         id: "summary",
-        label: i18n.summary,
+        label: __("Summary", "daily-digest"),
         enableGlobalSearch: true,
       },
     ],
-    [i18n],
+    [],
   );
 
   const loadDigest = useCallback(async () => {
@@ -181,7 +165,7 @@ const App = ({ config }) => {
 
     if (!response.ok) {
       setRawItems([]);
-      setErrorMessage(i18n.loadError);
+      setErrorMessage(__("Unable to load digest data.", "daily-digest"));
       setIsLoading(false);
       return;
     }
@@ -189,13 +173,13 @@ const App = ({ config }) => {
     const payload = await response.json();
     setRawItems(Array.isArray(payload.items) ? payload.items : []);
     setIsLoading(false);
-  }, [config.restNonce, config.restRoot, days, i18n.loadError]);
+  }, [config.restNonce, config.restRoot, days]);
 
   const actions = useMemo(
     () => [
       {
         id: "open-item",
-        label: i18n.openItem,
+        label: __("Open item", "daily-digest"),
         isEligible: (item) => Boolean(item?.url),
         callback: ([item]) => {
           if (item?.url) {
@@ -204,7 +188,7 @@ const App = ({ config }) => {
         },
       },
     ],
-    [i18n.openItem],
+    [],
   );
 
   const { data: processedData, paginationInfo } = useMemo(
@@ -245,9 +229,9 @@ const App = ({ config }) => {
 
   return (
     <div>
-      <h2>{i18n.digestTitle}</h2>
+      <h2>{__("Digest", "daily-digest")}</h2>
       <div className="daily-digest-overview-controls">
-        <label htmlFor="daily-digest-days-input">{i18n.daysLabel}</label>
+        <label htmlFor="daily-digest-days-input">{__("Window (days):", "daily-digest")}</label>
         <input
           id="daily-digest-days-input"
           className="daily-digest-overview-days"
@@ -261,19 +245,19 @@ const App = ({ config }) => {
           }}
         />
         <Button variant="secondary" onClick={() => void loadDigest()}>
-          {i18n.refresh}
+          {__("Refresh Digest", "daily-digest")}
         </Button>
       </div>
 
       {isLoading && (
         <p>
-          <Spinner /> {i18n.loading}
+          <Spinner /> {__("Loading activity…", "daily-digest")}
         </p>
       )}
 
       {!isLoading && errorMessage && <p>{errorMessage}</p>}
       {!isLoading && !errorMessage && rawItems.length === 0 && (
-        <p>{i18n.noItems}</p>
+        <p>{__("No activity found for enabled providers.", "daily-digest")}</p>
       )}
 
       {!isLoading && !errorMessage && rawItems.length > 0 && (

@@ -202,9 +202,12 @@ class AdminPage {
 		}
 
 		if ( $is_logs_page && \current_user_can( 'manage_options' ) ) {
+			$configured_providers = $this->get_configured_providers_for_user( \get_current_user_id() );
+
 			$logs_page_config = array(
-				'restRoot'  => \esc_url_raw( \rest_url( 'daily-digest/v1' ) ),
-				'restNonce' => \wp_create_nonce( 'wp_rest' ),
+				'restRoot'            => \esc_url_raw( \rest_url( 'daily-digest/v1' ) ),
+				'restNonce'           => \wp_create_nonce( 'wp_rest' ),
+				'configuredProviders' => $configured_providers,
 			);
 
 			\wp_add_inline_script(
@@ -213,6 +216,49 @@ class AdminPage {
 				'before'
 			);
 		}
+	}
+
+	/**
+	 * Returns configured and enabled providers for a user.
+	 *
+	 * @param int $user_id User ID.
+	 *
+	 * @return array<int, array<string, string>>
+	 */
+	private function get_configured_providers_for_user( int $user_id ): array {
+		$settings = $this->user_settings->get_for_user( $user_id );
+		$items    = array();
+
+		foreach ( $this->provider_registry->all() as $provider ) {
+			$slug              = $provider->get_slug();
+			$provider_settings = $settings[ $slug ] ?? array();
+			$enabled           = ! empty( $provider_settings['enabled'] );
+
+			if ( ! $enabled ) {
+				continue;
+			}
+
+			$fields   = isset( $provider_settings['fields'] ) && \is_array( $provider_settings['fields'] ) ? $provider_settings['fields'] : array();
+			$has_data = false;
+
+			foreach ( $fields as $field_value ) {
+				if ( '' !== \trim( (string) $field_value ) ) {
+					$has_data = true;
+					break;
+				}
+			}
+
+			if ( ! $has_data ) {
+				continue;
+			}
+
+			$items[] = array(
+				'slug' => $slug,
+				'name' => $provider->get_name(),
+			);
+		}
+
+		return $items;
 	}
 
 	/**

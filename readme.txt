@@ -10,7 +10,7 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
 A framework plugin that aggregates per-user activity from multiple providers (GitHub, ClickUp, Slack, and custom providers).
 
-CI: [![PHPCS](https://github.com/OWNER/REPO/actions/workflows/phpcs.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/phpcs.yml)
+CI: [![PHPCS](https://github.com/georgestephanis/daily-digest/actions/workflows/phpcs.yml/badge.svg)](https://github.com/georgestephanis/daily-digest/actions/workflows/phpcs.yml)
 
 == Description ==
 

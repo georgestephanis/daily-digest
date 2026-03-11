@@ -1,4 +1,9 @@
 <?php
+/**
+ * Admin page rendering class.
+ *
+ * @package DailyDigest
+ */
 
 declare(strict_types=1);
 

@@ -10,11 +10,7 @@
 	<arg name="extensions" value="php"/>
 	<arg value="sp"/>
 
-	<rule ref="WordPress-Core">
-		<exclude name="WordPress.Files.FileName.NotHyphenatedLowercase"/>
-		<exclude name="WordPress.Files.FileName.InvalidClassFileName"/>
-		<exclude name="Squiz.Commenting.FileComment.Missing"/>
-	</rule>
+	<rule ref="WordPress-Core"/>
 
 	<rule ref="WordPress-Extra"/>
 

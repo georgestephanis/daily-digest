@@ -1,4 +1,9 @@
 <?php
+/**
+ * User settings persistence class.
+ *
+ * @package DailyDigest
+ */
 
 declare(strict_types=1);
 

@@ -36,12 +36,19 @@ spl_autoload_register(
 		}
 
 		$relative_class = substr( $class_name, strlen( $prefix ) );
-		$relative_path  = str_replace( '\\', '/', $relative_class ) . '.php';
-		$file_path      = DAILY_DIGEST_PLUGIN_PATH . 'includes/' . $relative_path;
+		$class_parts    = explode( '\\', $relative_class );
+		$class_leaf     = array_pop( $class_parts );
+		$directory      = '';
 
-		if ( ! file_exists( $file_path ) ) {
-			$file_path = DAILY_DIGEST_PLUGIN_PATH . 'includes/' . lcfirst( $relative_path );
+		if ( ! empty( $class_parts ) ) {
+			$directory = strtolower( implode( '/', $class_parts ) ) . '/';
 		}
+
+		$is_interface = 'Interface' === substr( $class_leaf, -9 );
+		$filename     = $is_interface
+			? strtolower( $class_leaf ) . '.php'
+			: 'class-' . strtolower( $class_leaf ) . '.php';
+		$file_path    = DAILY_DIGEST_PLUGIN_PATH . 'includes/' . $directory . $filename;
 
 		if ( file_exists( $file_path ) ) {
 			require_once $file_path;

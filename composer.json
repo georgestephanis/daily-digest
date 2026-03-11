@@ -9,9 +9,9 @@
     "dealerdirect/phpcodesniffer-composer-installer": "^1.1"
   },
   "autoload": {
-    "psr-4": {
-      "DailyDigest\\": "includes/"
-    }
+    "classmap": [
+      "includes/"
+    ]
   },
   "scripts": {
     "lint": "phpcs --standard=phpcs.xml.dist",

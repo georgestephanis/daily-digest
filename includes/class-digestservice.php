@@ -1,4 +1,9 @@
 <?php
+/**
+ * Digest aggregation service class.
+ *
+ * @package DailyDigest
+ */
 
 declare(strict_types=1);
 

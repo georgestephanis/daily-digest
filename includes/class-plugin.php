@@ -1,4 +1,9 @@
 <?php
+/**
+ * Main plugin bootstrap class.
+ *
+ * @package DailyDigest
+ */
 
 declare(strict_types=1);
 

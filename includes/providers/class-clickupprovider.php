@@ -1,4 +1,9 @@
 <?php
+/**
+ * ClickUp provider adapter class.
+ *
+ * @package DailyDigest
+ */
 
 declare(strict_types=1);
 
@@ -11,16 +16,16 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Slack provider adapter.
+ * ClickUp provider adapter.
  */
-class SlackProvider implements ProviderInterface {
+class ClickupProvider implements ProviderInterface {
 	/**
 	 * Returns provider slug.
 	 *
 	 * @return string
 	 */
 	public function get_slug(): string {
-		return 'slack';
+		return 'clickup';
 	}
 
 	/**
@@ -29,7 +34,7 @@ class SlackProvider implements ProviderInterface {
 	 * @return string
 	 */
 	public function get_name(): string {
-		return 'Slack';
+		return 'ClickUp';
 	}
 
 	/**
@@ -39,9 +44,8 @@ class SlackProvider implements ProviderInterface {
 	 */
 	public function get_fields(): array {
 		return array(
-			'workspace' => \__( 'Workspace', 'daily-digest' ),
-			'user_id'   => \__( 'Slack User ID', 'daily-digest' ),
-			'bot_token' => \__( 'Bot Token', 'daily-digest' ),
+			'workspace_id' => \__( 'Workspace ID', 'daily-digest' ),
+			'token'        => \__( 'API Token', 'daily-digest' ),
 		);
 	}
 
@@ -56,10 +60,10 @@ class SlackProvider implements ProviderInterface {
 	 */
 	public function fetch_activity( int $user_id, array $provider_settings = array(), array $options = array() ): array {
 		$fields = $provider_settings['fields'] ?? array();
-		$items  = \apply_filters( 'daily_digest_provider_slack_activity', array(), $user_id, $fields, $options, $this );
+		$items  = \apply_filters( 'daily_digest_provider_clickup_activity', array(), $user_id, $fields, $options, $this );
 
 		if ( empty( $items ) ) {
-			$items = \apply_filters( 'dd_provider_slack_activity', array(), $user_id, $fields, $options, $this );
+			$items = \apply_filters( 'dd_provider_clickup_activity', array(), $user_id, $fields, $options, $this );
 		}
 
 		if ( ! \is_array( $items ) ) {

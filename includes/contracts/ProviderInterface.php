@@ -1,4 +1,9 @@
 <?php
+/**
+ * Provider contract interface.
+ *
+ * @package DailyDigest
+ */
 
 declare(strict_types=1);
 

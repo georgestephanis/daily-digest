@@ -1,4 +1,9 @@
 <?php
+/**
+ * Provider registry class.
+ *
+ * @package DailyDigest
+ */
 
 declare(strict_types=1);
 

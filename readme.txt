@@ -87,6 +87,22 @@ Watch and rebuild assets during development:
 
 - `npm run start`
 
+Run JavaScript lint checks:
+
+- `npm run lint:js`
+
+Auto-fix JavaScript lint issues:
+
+- `npm run lint:js:fix`
+
+Run all lint checks (PHP + JavaScript):
+
+- `npm run lint`
+
+Auto-fix lint issues (PHP + JavaScript):
+
+- `npm run lint:fix`
+
 Run WordPress coding standards checks:
 
 - `composer lint`

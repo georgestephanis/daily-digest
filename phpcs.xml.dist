@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<ruleset name="Daily Digest">
+	<description>WordPress Coding Standards for Daily Digest plugin.</description>
+
+	<file>./</file>
+
+	<exclude-pattern>vendor/*</exclude-pattern>
+
+	<arg name="basepath" value="."/>
+	<arg name="extensions" value="php"/>
+	<arg value="sp"/>
+
+	<rule ref="WordPress-Core">
+		<exclude name="WordPress.Files.FileName.NotHyphenatedLowercase"/>
+		<exclude name="WordPress.Files.FileName.InvalidClassFileName"/>
+		<exclude name="Squiz.Commenting.FileComment.Missing"/>
+	</rule>
+
+	<rule ref="WordPress-Extra"/>
+
+	<config name="minimum_supported_wp_version" value="6.0"/>
+</ruleset>

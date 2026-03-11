@@ -98,8 +98,14 @@ class Plugin {
 		$this->admin_page        = new AdminPage( $this->provider_registry, $this->user_settings, $this->digest_service, $this->api_logger );
 
 		$this->register_builtin_providers();
+		/**
+		 * Registers external Daily Digest providers.
+		 *
+		 * @since 0.1.0
+		 *
+		 * @param ProviderRegistry $provider_registry Provider registry instance.
+		 */
 		\do_action( 'daily_digest_register_providers', $this->provider_registry );
-		\do_action( 'dd_register_providers', $this->provider_registry );
 
 		$this->api_logger->register_hooks();
 		$this->admin_page->register();

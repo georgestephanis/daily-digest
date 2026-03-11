@@ -61,11 +61,18 @@ class SlackProvider implements ProviderInterface {
 	 */
 	public function fetch_activity( int $user_id, array $provider_settings = array(), array $options = array() ): array {
 		$fields = $provider_settings['fields'] ?? array();
-		$items  = \apply_filters( 'daily_digest_provider_slack_activity', array(), $user_id, $fields, $options, $this );
-
-		if ( empty( $items ) ) {
-			$items = \apply_filters( 'dd_provider_slack_activity', array(), $user_id, $fields, $options, $this );
-		}
+		/**
+		 * Filters Slack provider activity items.
+		 *
+		 * @since 0.1.0
+		 *
+		 * @param array         $items    Provider activity items.
+		 * @param int           $user_id  WordPress user ID.
+		 * @param array         $fields   Provider field values.
+		 * @param array         $options  Digest options.
+		 * @param SlackProvider $provider Provider instance.
+		 */
+		$items = \apply_filters( 'daily_digest_provider_slack_activity', array(), $user_id, $fields, $options, $this );
 
 		if ( ! \is_array( $items ) ) {
 			return array();

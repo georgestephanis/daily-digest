@@ -27,8 +27,6 @@ Built-in providers currently expose extension points and settings fields, and ca
 - `daily_digest_provider_clickup_activity`
 - `daily_digest_provider_slack_activity`
 
-Legacy `dd_provider_*` hooks are still supported for backward compatibility.
-
 Each filter should return an array of activity items with at least:
 
 - `timestamp` (parseable datetime)
@@ -68,8 +66,6 @@ Use the official provider docs for token/auth setup:
 Register additional providers via:
 
 - `do_action( 'daily_digest_register_providers', $provider_registry )`
-
-Legacy `dd_register_providers` is still supported for backward compatibility.
 
 Where `$provider_registry` is an instance of `DailyDigest\ProviderRegistry`.
 

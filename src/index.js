@@ -25,6 +25,22 @@ const defaultLayouts = {
 	},
 };
 
+const formatTimestamp = ( value ) => {
+	if ( ! value ) {
+		return '';
+	}
+
+	const parsed = new Date( value );
+	if ( Number.isNaN( parsed.getTime() ) ) {
+		return value;
+	}
+
+	return parsed.toLocaleString( undefined, {
+		dateStyle: 'medium',
+		timeStyle: 'medium',
+	} );
+};
+
 const getDefaultView = () => ( {
 	type: 'table',
 	perPage: 20,
@@ -119,6 +135,7 @@ const App = ( { config } ) => {
 				id: 'timestamp',
 				label: __( 'Time', 'daily-digest' ),
 				enableGlobalSearch: true,
+				render: ( { item } ) => formatTimestamp( item.timestamp ),
 			},
 			{
 				id: 'provider',

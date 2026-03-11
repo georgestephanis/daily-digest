@@ -221,11 +221,12 @@ class RestController {
 	 * @return array<string, string>
 	 */
 	private function normalize_log_entry( string $provider_slug, array $payload ): array {
-		$args    = isset( $payload['args'] ) && \is_array( $payload['args'] ) ? $payload['args'] : array();
-		$data    = isset( $payload['data'] ) && \is_array( $payload['data'] ) ? $payload['data'] : array();
-		$method  = isset( $args['method'] ) ? \sanitize_text_field( (string) $args['method'] ) : '';
-		$status  = '';
-		$summary = '';
+		$args             = isset( $payload['args'] ) && \is_array( $payload['args'] ) ? $payload['args'] : array();
+		$data             = isset( $payload['data'] ) && \is_array( $payload['data'] ) ? $payload['data'] : array();
+		$method           = isset( $args['method'] ) ? \sanitize_text_field( (string) $args['method'] ) : '';
+		$status           = '';
+		$summary          = '';
+		$response_summary = $this->build_response_summary( $data );
 
 		if ( isset( $data['response'] ) && \is_array( $data['response'] ) ) {
 			if ( isset( $data['response']['code'] ) ) {
@@ -247,14 +248,67 @@ class RestController {
 		}
 
 		return array(
-			'timestamp' => \sanitize_text_field( (string) ( $payload['timestamp'] ?? '' ) ),
-			'provider'  => \sanitize_text_field( $provider_slug ),
-			'context'   => \sanitize_text_field( (string) ( $payload['context'] ?? '' ) ),
-			'method'    => $method,
-			'status'    => $status,
-			'url'       => \esc_url_raw( (string) ( $payload['url'] ?? '' ) ),
-			'summary'   => $summary,
+			'timestamp'        => \sanitize_text_field( (string) ( $payload['timestamp'] ?? '' ) ),
+			'provider'         => \sanitize_text_field( $provider_slug ),
+			'context'          => \sanitize_text_field( (string) ( $payload['context'] ?? '' ) ),
+			'method'           => $method,
+			'status'           => $status,
+			'url'              => \esc_url_raw( (string) ( $payload['url'] ?? '' ) ),
+			'summary'          => $summary,
+			'response_summary' => $response_summary,
 		);
+	}
+
+	/**
+	 * Builds a concise response summary from raw HTTP data.
+	 *
+	 * @param array<string, mixed> $data HTTP debug data payload.
+	 *
+	 * @return string
+	 */
+	private function build_response_summary( array $data ): string {
+		if ( isset( $data['error_messages'] ) && \is_array( $data['error_messages'] ) ) {
+			$errors = \array_map( 'sanitize_text_field', $data['error_messages'] );
+			return \implode( ' | ', $errors );
+		}
+
+		if ( ! isset( $data['body'] ) || ! \is_string( $data['body'] ) ) {
+			return '';
+		}
+
+		$body = \trim( $data['body'] );
+		if ( '' === $body ) {
+			return '';
+		}
+
+		$decoded_json = \json_decode( $body, true );
+		if ( \is_array( $decoded_json ) ) {
+			if ( isset( $decoded_json['message'] ) && \is_scalar( $decoded_json['message'] ) ) {
+				return \sanitize_text_field( (string) $decoded_json['message'] );
+			}
+
+			if ( isset( $decoded_json['error'] ) && \is_scalar( $decoded_json['error'] ) ) {
+				return \sanitize_text_field( (string) $decoded_json['error'] );
+			}
+
+			$keys = \array_slice( \array_keys( $decoded_json ), 0, 6 );
+			if ( ! empty( $keys ) ) {
+				/* translators: %s: comma-separated JSON keys. */
+				return \sprintf( \__( 'JSON keys: %s', 'daily-digest' ), \sanitize_text_field( \implode( ', ', $keys ) ) );
+			}
+		}
+
+		$normalized = \preg_replace( '/\s+/', ' ', \wp_strip_all_tags( $body ) );
+		if ( ! \is_string( $normalized ) ) {
+			$normalized = $body;
+		}
+
+		$max_length = 180;
+		if ( \strlen( $normalized ) > $max_length ) {
+			return \sanitize_text_field( \substr( $normalized, 0, $max_length ) . '…' );
+		}
+
+		return \sanitize_text_field( $normalized );
 	}
 
 	/**

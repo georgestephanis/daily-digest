@@ -3,7 +3,7 @@
   "name": "daily-digest/daily-digest",
   "description": "Daily Digest WordPress plugin",
   "type": "wordpress-plugin",
-  "license": "GPLv2+",
+  "license": "GPL-2.0-or-later",
   "require-dev": {
     "squizlabs/php_codesniffer": "^3.10",
     "wp-coding-standards/wpcs": "^3.1",

@@ -3,6 +3,22 @@ import { __ } from '@wordpress/i18n';
 import { Button, Spinner } from '@wordpress/components';
 import { DataViews, filterSortAndPaginate } from '@wordpress/dataviews/wp';
 
+const formatTimestamp = ( value ) => {
+	if ( ! value ) {
+		return '';
+	}
+
+	const parsed = new Date( value );
+	if ( Number.isNaN( parsed.getTime() ) ) {
+		return value;
+	}
+
+	return parsed.toLocaleString( undefined, {
+		dateStyle: 'medium',
+		timeStyle: 'medium',
+	} );
+};
+
 export const LogViewerApp = ( { config } ) => {
 	const [ rawItems, setRawItems ] = useState( [] );
 	const [ isLoading, setIsLoading ] = useState( true );
@@ -17,6 +33,7 @@ export const LogViewerApp = ( { config } ) => {
 			'method',
 			'status',
 			'url',
+			'response_summary',
 			'summary',
 		],
 		sort: {
@@ -31,6 +48,7 @@ export const LogViewerApp = ( { config } ) => {
 				id: 'timestamp',
 				label: __( 'Timestamp', 'daily-digest' ),
 				enableGlobalSearch: true,
+				render: ( { item } ) => formatTimestamp( item.timestamp ),
 			},
 			{
 				id: 'provider',
@@ -71,6 +89,11 @@ export const LogViewerApp = ( { config } ) => {
 						</a>
 					);
 				},
+			},
+			{
+				id: 'response_summary',
+				label: __( 'Response', 'daily-digest' ),
+				enableGlobalSearch: true,
 			},
 			{
 				id: 'summary',

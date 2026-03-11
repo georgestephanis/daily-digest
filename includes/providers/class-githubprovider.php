@@ -60,6 +60,8 @@ class GithubProvider implements ProviderInterface {
 	 */
 	public function fetch_activity( int $user_id, array $provider_settings = array(), array $options = array() ): array {
 		$fields = $provider_settings['fields'] ?? array();
+		$items  = $this->fetch_notifications( $fields, $options );
+
 		/**
 		 * Filters GitHub provider activity items.
 		 *
@@ -71,13 +73,174 @@ class GithubProvider implements ProviderInterface {
 		 * @param array          $options  Digest options.
 		 * @param GithubProvider $provider Provider instance.
 		 */
-		$items = \apply_filters( 'daily_digest_provider_github_activity', array(), $user_id, $fields, $options, $this );
+		$items = \apply_filters( 'daily_digest_provider_github_activity', $items, $user_id, $fields, $options, $this );
 
 		if ( ! \is_array( $items ) ) {
 			return array();
 		}
 
 		return $this->apply_time_window( $items, $options );
+	}
+
+	/**
+	 * Fetches notifications from GitHub API.
+	 *
+	 * @param array $fields  Provider field values.
+	 * @param array $options Digest options.
+	 *
+	 * @return array
+	 */
+	private function fetch_notifications( array $fields, array $options ): array {
+		$token = isset( $fields['token'] ) ? \trim( (string) $fields['token'] ) : '';
+
+		if ( empty( $token ) ) {
+			return array();
+		}
+
+		$username = isset( $fields['username'] ) ? \trim( (string) $fields['username'] ) : '';
+		$days     = isset( $options['days'] ) ? \max( 1, \absint( $options['days'] ) ) : 1;
+		$since    = \gmdate( 'c', \strtotime( '-' . $days . ' days' ) );
+
+		$headers = array(
+			'Accept'               => 'application/vnd.github+json',
+			'Authorization'        => 'Bearer ' . $token,
+			'X-GitHub-Api-Version' => '2022-11-28',
+			'User-Agent'           => ! empty( $username ) ? $username : 'DailyDigestWP/' . DAILY_DIGEST_PLUGIN_VERSION,
+		);
+
+		$base_url     = 'https://api.github.com/notifications';
+		$all_items    = array();
+		$max_pages    = 5;
+		$current_page = 1;
+
+		while ( $current_page <= $max_pages ) {
+			$request_url = \add_query_arg(
+				array(
+					'all'      => 'true',
+					'since'    => $since,
+					'per_page' => 50,
+					'page'     => $current_page,
+				),
+				$base_url
+			);
+
+			$response = \wp_remote_get(
+				$request_url,
+				array(
+					'timeout' => 15,
+					'headers' => $headers,
+				)
+			);
+
+			if ( \is_wp_error( $response ) ) {
+				break;
+			}
+
+			$status_code = (int) \wp_remote_retrieve_response_code( $response );
+			if ( 200 !== $status_code ) {
+				break;
+			}
+
+			$body          = (string) \wp_remote_retrieve_body( $response );
+			$notifications = \json_decode( $body, true );
+
+			if ( ! \is_array( $notifications ) || empty( $notifications ) ) {
+				break;
+			}
+
+			foreach ( $notifications as $notification ) {
+				if ( ! \is_array( $notification ) ) {
+					continue;
+				}
+
+				$all_items[] = $this->map_notification_to_item( $notification );
+			}
+
+			if ( \count( $notifications ) < 50 ) {
+				break;
+			}
+
+			++$current_page;
+		}
+
+		return \array_values(
+			\array_filter(
+				$all_items,
+				static function ( array $item ): bool {
+					return ! empty( $item['timestamp'] ) && ! empty( $item['title'] );
+				}
+			)
+		);
+	}
+
+	/**
+	 * Maps one GitHub notification payload into digest item schema.
+	 *
+	 * @param array $notification GitHub notification payload.
+	 *
+	 * @return array
+	 */
+	private function map_notification_to_item( array $notification ): array {
+		$subject          = isset( $notification['subject'] ) && \is_array( $notification['subject'] ) ? $notification['subject'] : array();
+		$repository       = isset( $notification['repository'] ) && \is_array( $notification['repository'] ) ? $notification['repository'] : array();
+		$timestamp        = isset( $notification['updated_at'] ) ? (string) $notification['updated_at'] : '';
+		$subject_title    = isset( $subject['title'] ) ? (string) $subject['title'] : __( 'GitHub Notification', 'daily-digest' );
+		$subject_type     = isset( $subject['type'] ) ? (string) $subject['type'] : 'Notification';
+		$reason           = isset( $notification['reason'] ) ? (string) $notification['reason'] : '';
+		$repository_name  = isset( $repository['full_name'] ) ? (string) $repository['full_name'] : '';
+		$url              = $this->build_notification_url( $notification );
+		$summary_segments = array();
+
+		if ( ! empty( $repository_name ) ) {
+			$summary_segments[] = $repository_name;
+		}
+
+		if ( ! empty( $reason ) ) {
+			/* translators: %s: notification reason from GitHub API. */
+			$summary_segments[] = \sprintf( __( 'Reason: %s', 'daily-digest' ), $reason );
+		}
+
+		return array(
+			'provider'  => 'GitHub',
+			'type'      => $subject_type,
+			'timestamp' => $timestamp,
+			'title'     => $subject_title,
+			'summary'   => \implode( ' • ', $summary_segments ),
+			'url'       => $url,
+			'raw'       => $notification,
+		);
+	}
+
+	/**
+	 * Builds a user-friendly URL from a GitHub notification payload.
+	 *
+	 * @param array $notification GitHub notification payload.
+	 *
+	 * @return string
+	 */
+	private function build_notification_url( array $notification ): string {
+		$subject    = isset( $notification['subject'] ) && \is_array( $notification['subject'] ) ? $notification['subject'] : array();
+		$repository = isset( $notification['repository'] ) && \is_array( $notification['repository'] ) ? $notification['repository'] : array();
+
+		$subject_url      = isset( $subject['url'] ) ? (string) $subject['url'] : '';
+		$repository_url   = isset( $repository['html_url'] ) ? (string) $repository['html_url'] : '';
+		$subject_web_path = '';
+
+		if ( ! empty( $subject_url ) ) {
+			if ( \preg_match( '#/repos/[^/]+/[^/]+/(issues|pulls|discussions|commits|releases)/([^/]+)#', $subject_url, $matches ) ) {
+				$subject_web_path = $matches[1] . '/' . $matches[2];
+			}
+		}
+
+		if ( ! empty( $repository_url ) && ! empty( $subject_web_path ) ) {
+			return \trailingslashit( $repository_url ) . $subject_web_path;
+		}
+
+		if ( ! empty( $repository_url ) ) {
+			return $repository_url;
+		}
+
+		return '';
 	}
 
 	/**

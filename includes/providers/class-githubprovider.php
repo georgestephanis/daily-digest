@@ -50,6 +50,74 @@ class GithubProvider implements ProviderInterface {
 	}
 
 	/**
+	 * Tests GitHub credentials.
+	 *
+	 * @param array $provider_fields Provider field values.
+	 *
+	 * @return array{success:bool,message:string,details?:array}
+	 */
+	public function test_credentials( array $provider_fields ): array {
+		$token    = isset( $provider_fields['token'] ) ? \trim( (string) $provider_fields['token'] ) : '';
+		$username = isset( $provider_fields['username'] ) ? \trim( (string) $provider_fields['username'] ) : '';
+
+		if ( empty( $token ) ) {
+			return array(
+				'success' => false,
+				'message' => __( 'GitHub token is required.', 'daily-digest' ),
+			);
+		}
+
+		$response = \wp_remote_get(
+			'https://api.github.com/user',
+			array(
+				'timeout' => 15,
+				'headers' => array(
+					'Accept'               => 'application/vnd.github+json',
+					'Authorization'        => 'Bearer ' . $token,
+					'X-GitHub-Api-Version' => '2022-11-28',
+					'User-Agent'           => ! empty( $username ) ? $username : 'DailyDigestWP/' . DAILY_DIGEST_PLUGIN_VERSION,
+				),
+			)
+		);
+
+		if ( \is_wp_error( $response ) ) {
+			return array(
+				'success' => false,
+				'message' => $response->get_error_message(),
+			);
+		}
+
+		$status_code = (int) \wp_remote_retrieve_response_code( $response );
+		$payload     = \json_decode( (string) \wp_remote_retrieve_body( $response ), true );
+
+		if ( 200 !== $status_code || ! \is_array( $payload ) ) {
+			return array(
+				'success' => false,
+				'message' => __( 'GitHub credentials test failed.', 'daily-digest' ),
+			);
+		}
+
+		$api_login = isset( $payload['login'] ) ? (string) $payload['login'] : '';
+		if ( ! empty( $username ) && 0 !== strcasecmp( $username, $api_login ) ) {
+			return array(
+				'success' => false,
+				'message' => __( 'GitHub username does not match token owner.', 'daily-digest' ),
+				'details' => array(
+					'api_login' => $api_login,
+				),
+			);
+		}
+
+		return array(
+			'success' => true,
+			'message' => __( 'GitHub credentials are valid.', 'daily-digest' ),
+			'details' => array(
+				'login' => $api_login,
+			),
+		);
+	}
+
+	/**
 	 * Fetches activity data from integration callbacks.
 	 *
 	 * @param int   $user_id           User ID.

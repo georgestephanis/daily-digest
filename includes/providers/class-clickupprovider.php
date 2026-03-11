@@ -50,6 +50,61 @@ class ClickupProvider implements ProviderInterface {
 	}
 
 	/**
+	 * Tests ClickUp credentials.
+	 *
+	 * @param array $provider_fields Provider field values.
+	 *
+	 * @return array{success:bool,message:string,details?:array}
+	 */
+	public function test_credentials( array $provider_fields ): array {
+		$token = isset( $provider_fields['token'] ) ? \trim( (string) $provider_fields['token'] ) : '';
+
+		if ( empty( $token ) ) {
+			return array(
+				'success' => false,
+				'message' => __( 'ClickUp token is required.', 'daily-digest' ),
+			);
+		}
+
+		$response = \wp_remote_get(
+			'https://api.clickup.com/api/v2/user',
+			array(
+				'timeout' => 15,
+				'headers' => array(
+					'Authorization' => $token,
+				),
+			)
+		);
+
+		if ( \is_wp_error( $response ) ) {
+			return array(
+				'success' => false,
+				'message' => $response->get_error_message(),
+			);
+		}
+
+		$status_code = (int) \wp_remote_retrieve_response_code( $response );
+		$payload     = \json_decode( (string) \wp_remote_retrieve_body( $response ), true );
+
+		if ( 200 !== $status_code || ! \is_array( $payload ) || empty( $payload['user'] ) ) {
+			return array(
+				'success' => false,
+				'message' => __( 'ClickUp credentials test failed.', 'daily-digest' ),
+			);
+		}
+
+		$user_name = isset( $payload['user']['username'] ) ? (string) $payload['user']['username'] : '';
+
+		return array(
+			'success' => true,
+			'message' => __( 'ClickUp credentials are valid.', 'daily-digest' ),
+			'details' => array(
+				'user' => $user_name,
+			),
+		);
+	}
+
+	/**
 	 * Fetches activity data from integration callbacks.
 	 *
 	 * @param int   $user_id           User ID.

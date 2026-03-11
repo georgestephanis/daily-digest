@@ -88,6 +88,53 @@ class DigestService {
 	}
 
 	/**
+	 * Returns digest items for one provider for a user.
+	 *
+	 * @param int    $user_id       User ID.
+	 * @param string $provider_slug Provider slug.
+	 * @param array  $options       Query options.
+	 *
+	 * @return array
+	 */
+	public function get_provider_digest_for_user( int $user_id, string $provider_slug, array $options = array() ): array {
+		$provider = $this->provider_registry->get( $provider_slug );
+		if ( null === $provider ) {
+			return array();
+		}
+
+		$all_provider_settings = $this->user_settings->get_for_user( $user_id );
+		$provider_settings     = $all_provider_settings[ $provider_slug ] ?? array();
+
+		if ( empty( $provider_settings['enabled'] ) ) {
+			return array();
+		}
+
+		$provider_items = ProviderExecutionContext::run_with_provider(
+			$provider_slug,
+			static function () use ( $provider, $user_id, $provider_settings, $options ): array {
+				return $provider->fetch_activity( $user_id, $provider_settings, $options );
+			}
+		);
+
+		$digest_items = array();
+		foreach ( $provider_items as $item ) {
+			$normalized = $this->normalize_item( $item, $provider );
+			if ( null !== $normalized ) {
+				$digest_items[] = $normalized;
+			}
+		}
+
+		\usort(
+			$digest_items,
+			static function ( array $left, array $right ): int {
+				return \strcmp( $right['timestamp'], $left['timestamp'] );
+			}
+		);
+
+		return $digest_items;
+	}
+
+	/**
 	 * Normalizes a provider activity item to digest schema.
 	 *
 	 * @param array             $item     Raw provider item.

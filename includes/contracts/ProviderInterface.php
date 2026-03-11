@@ -39,6 +39,15 @@ interface ProviderInterface {
 	public function get_fields(): array;
 
 	/**
+	 * Tests provider credentials.
+	 *
+	 * @param array $provider_fields Provider field values.
+	 *
+	 * @return array{success:bool,message:string,details?:array}
+	 */
+	public function test_credentials( array $provider_fields ): array;
+
+	/**
 	 * Fetches activity items for the given user.
 	 *
 	 * @param int   $user_id           User ID.

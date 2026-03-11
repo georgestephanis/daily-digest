@@ -71,6 +71,13 @@ class Plugin {
 	private ApiLogger $api_logger;
 
 	/**
+	 * REST controller service.
+	 *
+	 * @var RestController
+	 */
+	private RestController $rest_controller;
+
+	/**
 	 * Returns singleton instance.
 	 *
 	 * @return Plugin
@@ -95,6 +102,7 @@ class Plugin {
 		$this->user_settings     = new UserSettings();
 		$this->api_logger        = new ApiLogger();
 		$this->digest_service    = new DigestService( $this->provider_registry, $this->user_settings );
+		$this->rest_controller   = new RestController( $this->provider_registry, $this->user_settings, $this->digest_service );
 		$this->admin_page        = new AdminPage( $this->provider_registry, $this->user_settings, $this->digest_service, $this->api_logger );
 
 		$this->register_builtin_providers();
@@ -108,6 +116,7 @@ class Plugin {
 		\do_action( 'daily_digest_register_providers', $this->provider_registry );
 
 		$this->api_logger->register_hooks();
+		$this->rest_controller->register();
 		$this->admin_page->register();
 		$this->booted = true;
 	}

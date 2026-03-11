@@ -108,15 +108,10 @@ class AdminPage {
 			\wp_die( \esc_html__( 'You must be logged in to view this page.', 'daily-digest' ) );
 		}
 
-		$current_user_id = \get_current_user_id();
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only filter input that does not change data.
-		$days         = isset( $_GET['days'] ) ? \max( 1, \absint( $_GET['days'] ) ) : 1;
-		$digest_items = $this->digest_service->get_digest_for_user(
-			$current_user_id,
-			array(
-				'days' => $days,
-			)
-		);
+		$days      = isset( $_GET['days'] ) ? \max( 1, \absint( $_GET['days'] ) ) : 1;
+		$rest_root = \esc_url_raw( \rest_url( 'daily-digest/v1' ) );
+		$nonce     = \wp_create_nonce( 'wp_rest' );
 		?>
 		<div class="wrap">
 			<h1>
@@ -133,48 +128,102 @@ class AdminPage {
 			</p>
 
 			<h2><?php \esc_html_e( 'Digest', 'daily-digest' ); ?></h2>
-			<form method="get" style="margin-bottom: 1em;">
+			<form method="get" id="daily-digest-overview-form" style="margin-bottom: 1em;">
 				<input type="hidden" name="page" value="daily-digest" />
 				<label>
 					<?php \esc_html_e( 'Window (days):', 'daily-digest' ); ?>
-					<input type="number" min="1" max="30" name="days" value="<?php echo \esc_attr( (string) $days ); ?>" />
+					<input type="number" min="1" max="30" name="days" id="daily-digest-days" value="<?php echo \esc_attr( (string) $days ); ?>" />
 				</label>
 				<?php \submit_button( \__( 'Refresh Digest', 'daily-digest' ), 'secondary', '', false ); ?>
 			</form>
 
-			<?php if ( empty( $digest_items ) ) : ?>
-				<p><?php \esc_html_e( 'No activity found for enabled providers.', 'daily-digest' ); ?></p>
-			<?php else : ?>
-				<table class="widefat striped">
-					<thead>
-						<tr>
-							<th><?php \esc_html_e( 'Time', 'daily-digest' ); ?></th>
-							<th><?php \esc_html_e( 'Provider', 'daily-digest' ); ?></th>
-							<th><?php \esc_html_e( 'Type', 'daily-digest' ); ?></th>
-							<th><?php \esc_html_e( 'Title', 'daily-digest' ); ?></th>
-							<th><?php \esc_html_e( 'Summary', 'daily-digest' ); ?></th>
-						</tr>
-					</thead>
-					<tbody>
-						<?php foreach ( $digest_items as $item ) : ?>
-							<tr>
-								<td><?php echo \esc_html( \get_date_from_gmt( $item['timestamp'], 'Y-m-d H:i:s' ) ); ?></td>
-								<td><?php echo \esc_html( $item['provider'] ); ?></td>
-								<td><?php echo \esc_html( $item['type'] ); ?></td>
-								<td>
-									<?php if ( ! empty( $item['url'] ) ) : ?>
-										<a href="<?php echo \esc_url( $item['url'] ); ?>" target="_blank" rel="noopener noreferrer"><?php echo \esc_html( $item['title'] ); ?></a>
-									<?php else : ?>
-										<?php echo \esc_html( $item['title'] ); ?>
-									<?php endif; ?>
-								</td>
-								<td><?php echo \esc_html( $item['summary'] ); ?></td>
-							</tr>
-						<?php endforeach; ?>
-					</tbody>
-				</table>
-			<?php endif; ?>
+			<p id="daily-digest-status"><?php \esc_html_e( 'Loading activity…', 'daily-digest' ); ?></p>
+			<table class="widefat striped" id="daily-digest-table" style="display:none;">
+				<thead>
+					<tr>
+						<th><?php \esc_html_e( 'Time', 'daily-digest' ); ?></th>
+						<th><?php \esc_html_e( 'Provider', 'daily-digest' ); ?></th>
+						<th><?php \esc_html_e( 'Type', 'daily-digest' ); ?></th>
+						<th><?php \esc_html_e( 'Title', 'daily-digest' ); ?></th>
+						<th><?php \esc_html_e( 'Summary', 'daily-digest' ); ?></th>
+					</tr>
+				</thead>
+				<tbody id="daily-digest-tbody"></tbody>
+			</table>
 		</div>
+		<script>
+		(function() {
+			const restRoot = <?php echo \wp_json_encode( $rest_root ); ?>;
+			const restNonce = <?php echo \wp_json_encode( $nonce ); ?>;
+			const statusEl = document.getElementById('daily-digest-status');
+			const tableEl = document.getElementById('daily-digest-table');
+			const tbodyEl = document.getElementById('daily-digest-tbody');
+			const formEl = document.getElementById('daily-digest-overview-form');
+			const daysEl = document.getElementById('daily-digest-days');
+
+			const escapeHtml = (value) => {
+				const div = document.createElement('div');
+				div.innerText = value == null ? '' : String(value);
+				return div.innerHTML;
+			};
+
+			const renderRows = (items) => {
+				tbodyEl.innerHTML = '';
+				items.forEach((item) => {
+					const tr = document.createElement('tr');
+					const title = escapeHtml(item.title || '');
+					const url = item.url || '';
+					const titleCell = url
+						? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${title}</a>`
+						: title;
+					tr.innerHTML = `
+						<td>${escapeHtml(item.timestamp || '')}</td>
+						<td>${escapeHtml(item.provider || '')}</td>
+						<td>${escapeHtml(item.type || '')}</td>
+						<td>${titleCell}</td>
+						<td>${escapeHtml(item.summary || '')}</td>
+					`;
+					tbodyEl.appendChild(tr);
+				});
+			};
+
+			const loadDigest = async () => {
+				const days = Math.max(1, parseInt(daysEl.value || '1', 10));
+				statusEl.textContent = <?php echo \wp_json_encode( __( 'Loading activity…', 'daily-digest' ) ); ?>;
+				tableEl.style.display = 'none';
+
+				const response = await fetch(`${restRoot}/digest?days=${encodeURIComponent(days)}`, {
+					headers: {
+						'X-WP-Nonce': restNonce
+					}
+				});
+
+				if (!response.ok) {
+					statusEl.textContent = <?php echo \wp_json_encode( __( 'Unable to load digest data.', 'daily-digest' ) ); ?>;
+					return;
+				}
+
+				const payload = await response.json();
+				const items = Array.isArray(payload.items) ? payload.items : [];
+
+				if (!items.length) {
+					statusEl.textContent = <?php echo \wp_json_encode( __( 'No activity found for enabled providers.', 'daily-digest' ) ); ?>;
+					return;
+				}
+
+				renderRows(items);
+				statusEl.textContent = '';
+				tableEl.style.display = '';
+			};
+
+			formEl.addEventListener('submit', (event) => {
+				event.preventDefault();
+				void loadDigest();
+			});
+
+			void loadDigest();
+		})();
+		</script>
 		<?php
 	}
 
@@ -193,12 +242,14 @@ class AdminPage {
 		$logging_enabled    = $this->api_logger->is_enabled();
 		$logging_directory  = $this->api_logger->get_log_directory_path();
 		$logging_url        = $this->api_logger->get_log_directory_url();
+		$rest_root          = \esc_url_raw( \rest_url( 'daily-digest/v1' ) );
+		$nonce              = \wp_create_nonce( 'wp_rest' );
 		?>
 		<div class="wrap">
 			<h1><?php \esc_html_e( 'Daily Digest Settings', 'daily-digest' ); ?></h1>
 			<p><?php \esc_html_e( 'Enable and configure providers for your digest.', 'daily-digest' ); ?></p>
 
-			<form method="post">
+			<form method="post" id="daily-digest-settings-form">
 				<?php \wp_nonce_field( 'daily_digest_save_settings', 'daily_digest_nonce' ); ?>
 				<table class="form-table" role="presentation">
 					<tbody>
@@ -209,7 +260,7 @@ class AdminPage {
 							$enabled           = ! empty( $provider_settings['enabled'] );
 							$fields            = $provider_settings['fields'] ?? array();
 							?>
-							<tr>
+							<tr data-provider="<?php echo \esc_attr( $slug ); ?>">
 								<th scope="row"><?php echo \esc_html( $provider->get_name() ); ?></th>
 								<td>
 									<label>
@@ -237,6 +288,12 @@ class AdminPage {
 											</label>
 										</p>
 									<?php endforeach; ?>
+									<p>
+										<button type="button" class="button button-secondary daily-digest-test-credentials" data-provider="<?php echo \esc_attr( $slug ); ?>">
+											<?php \esc_html_e( 'Test Credentials', 'daily-digest' ); ?>
+										</button>
+										<span class="daily-digest-test-result" id="daily-digest-test-result-<?php echo \esc_attr( $slug ); ?>" style="margin-left:8px;"></span>
+									</p>
 								</td>
 							</tr>
 						<?php endforeach; ?>
@@ -274,6 +331,68 @@ class AdminPage {
 				<?php \submit_button( \__( 'Save Settings', 'daily-digest' ) ); ?>
 			</form>
 		</div>
+		<script>
+		(function() {
+			const restRoot = <?php echo \wp_json_encode( $rest_root ); ?>;
+			const restNonce = <?php echo \wp_json_encode( $nonce ); ?>;
+			const buttons = document.querySelectorAll('.daily-digest-test-credentials');
+
+			const setResult = (provider, text, ok) => {
+				const el = document.getElementById(`daily-digest-test-result-${provider}`);
+				if (!el) {
+					return;
+				}
+				el.textContent = text;
+				el.style.color = ok ? '#0a7d18' : '#b32d2e';
+			};
+
+			const collectProviderFields = (provider) => {
+				const fields = {};
+				document.querySelectorAll(`input[name^="daily_digest_settings[${provider}][fields]"]`).forEach((input) => {
+					const match = input.name.match(/\[fields\]\[([^\]]+)\]/);
+					if (match && match[1]) {
+						fields[match[1]] = input.value;
+					}
+				});
+				return fields;
+			};
+
+			buttons.forEach((button) => {
+				button.addEventListener('click', async () => {
+					const provider = button.getAttribute('data-provider') || '';
+					if (!provider) {
+						return;
+					}
+
+					setResult(provider, <?php echo \wp_json_encode( __( 'Testing…', 'daily-digest' ) ); ?>, true);
+
+					const response = await fetch(`${restRoot}/providers/${encodeURIComponent(provider)}/test-credentials`, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+							'X-WP-Nonce': restNonce,
+						},
+						body: JSON.stringify({ fields: collectProviderFields(provider) })
+					});
+
+					let payload = null;
+					try {
+						payload = await response.json();
+					} catch (e) {
+						payload = null;
+					}
+
+					if (!response.ok || !payload || !payload.success) {
+						const message = payload && payload.message ? payload.message : <?php echo \wp_json_encode( __( 'Credential test failed.', 'daily-digest' ) ); ?>;
+						setResult(provider, message, false);
+						return;
+					}
+
+					setResult(provider, payload.message || <?php echo \wp_json_encode( __( 'Credentials are valid.', 'daily-digest' ) ); ?>, true);
+				});
+			});
+		})();
+		</script>
 		<?php
 	}
 

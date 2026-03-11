@@ -51,6 +51,61 @@ class SlackProvider implements ProviderInterface {
 	}
 
 	/**
+	 * Tests Slack credentials.
+	 *
+	 * @param array $provider_fields Provider field values.
+	 *
+	 * @return array{success:bool,message:string,details?:array}
+	 */
+	public function test_credentials( array $provider_fields ): array {
+		$token = isset( $provider_fields['bot_token'] ) ? \trim( (string) $provider_fields['bot_token'] ) : '';
+
+		if ( empty( $token ) ) {
+			return array(
+				'success' => false,
+				'message' => __( 'Slack bot token is required.', 'daily-digest' ),
+			);
+		}
+
+		$response = \wp_remote_get(
+			'https://slack.com/api/auth.test',
+			array(
+				'timeout' => 15,
+				'headers' => array(
+					'Authorization' => 'Bearer ' . $token,
+				),
+			)
+		);
+
+		if ( \is_wp_error( $response ) ) {
+			return array(
+				'success' => false,
+				'message' => $response->get_error_message(),
+			);
+		}
+
+		$status_code = (int) \wp_remote_retrieve_response_code( $response );
+		$payload     = \json_decode( (string) \wp_remote_retrieve_body( $response ), true );
+
+		if ( 200 !== $status_code || ! \is_array( $payload ) || empty( $payload['ok'] ) ) {
+			return array(
+				'success' => false,
+				'message' => __( 'Slack credentials test failed.', 'daily-digest' ),
+			);
+		}
+
+		$team = isset( $payload['team'] ) ? (string) $payload['team'] : '';
+
+		return array(
+			'success' => true,
+			'message' => __( 'Slack credentials are valid.', 'daily-digest' ),
+			'details' => array(
+				'team' => $team,
+			),
+		);
+	}
+
+	/**
 	 * Fetches activity data from integration callbacks.
 	 *
 	 * @param int   $user_id           User ID.

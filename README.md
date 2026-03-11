@@ -40,6 +40,43 @@ Daily Digest is a WordPress plugin that aggregates per-user activity from multip
 - OAuth v2: https://api.slack.com/authentication/oauth-v2
 - User Lookup: https://api.slack.com/methods/users.lookupByEmail
 
+### Slack Credential Format (What Daily Digest Expects)
+
+Daily Digest uses a Slack app Bot User token and a target Slack User ID.
+
+Required fields in Settings:
+
+- `Workspace Subdomain`: your workspace slug only (for example, `myworkspace` from `myworkspace.slack.com`)
+- `Slack User ID`: the user whose messages you want to include (typically starts with `U`)
+- `Bot User OAuth Token`: token that starts with `xoxb-`
+
+### Slack Setup Steps (Recommended)
+
+1. Go to https://api.slack.com/apps and click **Create New App**.
+2. Choose your workspace.
+3. In **OAuth & Permissions**, add Bot Token Scopes:
+	- `channels:read`
+	- `groups:read`
+	- `channels:history`
+	- `groups:history`
+4. Install (or reinstall) the app to the workspace.
+5. Copy the **Bot User OAuth Token** (`xoxb-...`).
+6. Obtain the target Slack User ID:
+	- via `users.lookupByEmail` (API method), or
+	- from the Slack profile menu in the app/client.
+7. In WordPress, open **Daily Digest → Settings** and enter:
+	- Workspace subdomain,
+	- Slack User ID,
+	- Bot token.
+8. Enable Slack provider and click **Test Credentials**.
+
+### Common Slack Auth Issues
+
+- Using a `xoxp-` user token instead of `xoxb-` bot token.
+- Missing history/read scopes on the Slack app.
+- App not installed (or not reinstalled after scope changes).
+- Slack User ID is an email/username instead of an actual user ID.
+
 ## Development
 
 ### Install dependencies

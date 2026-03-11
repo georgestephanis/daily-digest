@@ -44,9 +44,9 @@ class SlackProvider implements ProviderInterface {
 	 */
 	public function get_fields(): array {
 		return array(
-			'workspace' => \__( 'Workspace', 'daily-digest' ),
-			'user_id'   => \__( 'Slack User ID', 'daily-digest' ),
-			'bot_token' => \__( 'Bot Token', 'daily-digest' ),
+			'workspace' => \__( 'Workspace Subdomain (e.g. myworkspace)', 'daily-digest' ),
+			'user_id'   => \__( 'Slack User ID (U…)', 'daily-digest' ),
+			'bot_token' => \__( 'Bot User OAuth Token (xoxb-…)', 'daily-digest' ),
 		);
 	}
 

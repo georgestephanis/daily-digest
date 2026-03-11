@@ -60,6 +60,21 @@ Use the official provider docs for token/auth setup:
   * OAuth v2 and token scopes: https://api.slack.com/authentication/oauth-v2
   * User lookup method (for User ID): https://api.slack.com/methods/users.lookupByEmail
 
+Slack credential format expected by Daily Digest:
+
+* Workspace Subdomain: workspace slug only (example: myworkspace from myworkspace.slack.com)
+* Slack User ID: target user ID (typically starts with U)
+* Bot User OAuth Token: token starting with xoxb-
+
+Slack setup steps:
+
+1. Create a Slack app at https://api.slack.com/apps.
+2. In OAuth & Permissions, add bot scopes: channels:read, groups:read, channels:history, groups:history.
+3. Install or reinstall the app to your workspace.
+4. Copy the Bot User OAuth Token (xoxb-...).
+5. Find the Slack User ID (users.lookupByEmail or profile tools).
+6. Enter values in Daily Digest > Settings and run Test Credentials.
+
 == Extending ==
 
 Register additional providers via:

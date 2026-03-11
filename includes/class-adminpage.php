@@ -292,7 +292,11 @@ class AdminPage {
 										<button type="button" class="button button-secondary daily-digest-test-credentials" data-provider="<?php echo \esc_attr( $slug ); ?>">
 											<?php \esc_html_e( 'Test Credentials', 'daily-digest' ); ?>
 										</button>
+										<button type="button" class="button button-primary daily-digest-save-credentials" data-provider="<?php echo \esc_attr( $slug ); ?>">
+											<?php \esc_html_e( 'Save Provider', 'daily-digest' ); ?>
+										</button>
 										<span class="daily-digest-test-result" id="daily-digest-test-result-<?php echo \esc_attr( $slug ); ?>" style="margin-left:8px;"></span>
+										<span class="daily-digest-save-result" id="daily-digest-save-result-<?php echo \esc_attr( $slug ); ?>" style="margin-left:8px;"></span>
 									</p>
 								</td>
 							</tr>
@@ -336,6 +340,7 @@ class AdminPage {
 			const restRoot = <?php echo \wp_json_encode( $rest_root ); ?>;
 			const restNonce = <?php echo \wp_json_encode( $nonce ); ?>;
 			const buttons = document.querySelectorAll('.daily-digest-test-credentials');
+			const saveButtons = document.querySelectorAll('.daily-digest-save-credentials');
 
 			const setResult = (provider, text, ok) => {
 				const el = document.getElementById(`daily-digest-test-result-${provider}`);
@@ -355,6 +360,20 @@ class AdminPage {
 					}
 				});
 				return fields;
+			};
+
+			const collectProviderEnabled = (provider) => {
+				const input = document.querySelector(`input[name="daily_digest_settings[${provider}][enabled]"]`);
+				return !!(input && input.checked);
+			};
+
+			const setSaveResult = (provider, text, ok) => {
+				const el = document.getElementById(`daily-digest-save-result-${provider}`);
+				if (!el) {
+					return;
+				}
+				el.textContent = text;
+				el.style.color = ok ? '#0a7d18' : '#b32d2e';
 			};
 
 			buttons.forEach((button) => {
@@ -389,6 +408,47 @@ class AdminPage {
 					}
 
 					setResult(provider, payload.message || <?php echo \wp_json_encode( __( 'Credentials are valid.', 'daily-digest' ) ); ?>, true);
+				});
+			});
+
+			saveButtons.forEach((button) => {
+				button.addEventListener('click', async () => {
+					const provider = button.getAttribute('data-provider') || '';
+					if (!provider) {
+						return;
+					}
+
+					button.disabled = true;
+					setSaveResult(provider, <?php echo \wp_json_encode( __( 'Saving…', 'daily-digest' ) ); ?>, true);
+
+					const response = await fetch(`${restRoot}/providers/${encodeURIComponent(provider)}/credentials`, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+							'X-WP-Nonce': restNonce,
+						},
+						body: JSON.stringify({
+							fields: collectProviderFields(provider),
+							enabled: collectProviderEnabled(provider),
+						})
+					});
+
+					let payload = null;
+					try {
+						payload = await response.json();
+					} catch (e) {
+						payload = null;
+					}
+
+					if (!response.ok || !payload || !payload.success) {
+						const message = payload && payload.message ? payload.message : <?php echo \wp_json_encode( __( 'Unable to save provider credentials.', 'daily-digest' ) ); ?>;
+						setSaveResult(provider, message, false);
+						button.disabled = false;
+						return;
+					}
+
+					setSaveResult(provider, payload.message || <?php echo \wp_json_encode( __( 'Provider credentials saved.', 'daily-digest' ) ); ?>, true);
+					button.disabled = false;
 				});
 			});
 		})();

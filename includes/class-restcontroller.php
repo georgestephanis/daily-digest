@@ -105,6 +105,16 @@ class RestController {
 				'permission_callback' => array( $this, 'can_read' ),
 			)
 		);
+
+		\register_rest_route(
+			'daily-digest/v1',
+			'/providers/(?P<provider>[a-z0-9_-]+)/credentials',
+			array(
+				'methods'             => \WP_REST_Server::CREATABLE,
+				'callback'            => array( $this, 'save_provider_credentials' ),
+				'permission_callback' => array( $this, 'can_read' ),
+			)
+		);
 	}
 
 	/**
@@ -191,6 +201,87 @@ class RestController {
 		$status  = ! empty( $results['success'] ) ? 200 : 400;
 
 		return new \WP_REST_Response( $results, $status );
+	}
+
+	/**
+	 * Saves credentials for one provider for the current user.
+	 *
+	 * Request body:
+	 * - fields: array of provider field values.
+	 * - enabled: optional bool.
+	 * - test_after_save: optional bool, runs test_credentials and returns result.
+	 *
+	 * @param \WP_REST_Request $request REST request.
+	 *
+	 * @return \WP_REST_Response
+	 */
+	public function save_provider_credentials( \WP_REST_Request $request ): \WP_REST_Response {
+		$provider_slug = \sanitize_key( (string) $request->get_param( 'provider' ) );
+		$provider      = $this->provider_registry->get( $provider_slug );
+
+		if ( null === $provider ) {
+			return new \WP_REST_Response(
+				array(
+					'success' => false,
+					'message' => __( 'Provider not found.', 'daily-digest' ),
+				),
+				404
+			);
+		}
+
+		$fields = $request->get_param( 'fields' );
+		if ( ! \is_array( $fields ) ) {
+			$fields = array();
+		}
+
+		$allowed_fields  = array_keys( $provider->get_fields() );
+		$filtered_fields = array();
+
+		foreach ( $fields as $field_key => $field_value ) {
+			$normalized_key = \sanitize_key( (string) $field_key );
+			if ( ! in_array( $normalized_key, $allowed_fields, true ) ) {
+				continue;
+			}
+
+			$filtered_fields[ $normalized_key ] = \sanitize_text_field( (string) $field_value );
+		}
+
+		$user_id       = \get_current_user_id();
+		$user_settings = $this->user_settings->get_for_user( $user_id );
+		$existing      = isset( $user_settings[ $provider_slug ] ) && \is_array( $user_settings[ $provider_slug ] ) ? $user_settings[ $provider_slug ] : array();
+
+		if ( isset( $request['enabled'] ) ) {
+			$enabled = (bool) $request->get_param( 'enabled' );
+		} else {
+			$enabled = ! empty( $existing['enabled'] );
+		}
+
+		$user_settings[ $provider_slug ] = array(
+			'enabled' => $enabled,
+			'fields'  => $filtered_fields,
+		);
+
+		$this->user_settings->save_for_user( $user_id, $user_settings );
+
+		$response_data = array(
+			'success'  => true,
+			'message'  => __( 'Provider credentials saved.', 'daily-digest' ),
+			'provider' => $provider_slug,
+			'enabled'  => $enabled,
+			'fields'   => array_keys( $filtered_fields ),
+		);
+
+		if ( ! empty( $request->get_param( 'test_after_save' ) ) ) {
+			$test_results             = $provider->test_credentials( $filtered_fields );
+			$response_data['test']    = $test_results;
+			$response_data['success'] = ! empty( $test_results['success'] );
+			$response_data['message'] = ! empty( $test_results['message'] ) ? (string) $test_results['message'] : $response_data['message'];
+			$status                   = $response_data['success'] ? 200 : 400;
+
+			return new \WP_REST_Response( $response_data, $status );
+		}
+
+		return new \WP_REST_Response( $response_data, 200 );
 	}
 
 	/**

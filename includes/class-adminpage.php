@@ -65,7 +65,7 @@ class AdminPage {
 	 */
 	public function register(): void {
 		\add_action( 'admin_menu', array( $this, 'register_pages' ) );
-		\add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_overview_assets' ) );
+		\add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
 	}
 
 	/**
@@ -98,6 +98,15 @@ class AdminPage {
 			'read',
 			'daily-digest-settings',
 			array( $this, 'render_settings_page' )
+		);
+
+		\add_submenu_page(
+			'daily-digest',
+			\__( 'Logs', 'daily-digest' ),
+			\__( 'Logs', 'daily-digest' ),
+			'manage_options',
+			'daily-digest-logs',
+			array( $this, 'render_logs_page' )
 		);
 	}
 
@@ -133,12 +142,15 @@ class AdminPage {
 	}
 
 	/**
-	 * Enqueues built React/DataViews assets for the overview page.
+	 * Enqueues built React/DataViews assets for supported admin pages.
 	 *
 	 * @param string $hook_suffix Current admin hook suffix.
 	 */
-	public function enqueue_overview_assets( string $hook_suffix ): void {
-		if ( 'toplevel_page_daily-digest' !== $hook_suffix ) {
+	public function enqueue_admin_assets( string $hook_suffix ): void {
+		$is_overview_page = 'toplevel_page_daily-digest' === $hook_suffix;
+		$is_logs_page     = 'daily-digest_page_daily-digest-logs' === $hook_suffix;
+
+		if ( ! $is_overview_page && ! $is_logs_page ) {
 			return;
 		}
 
@@ -170,36 +182,66 @@ class AdminPage {
 			);
 		}
 
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only filter input used only for app initialization.
-		$days = isset( $_GET['days'] ) ? \max( 1, \absint( $_GET['days'] ) ) : 1;
+		if ( $is_overview_page ) {
+			// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only filter input used only for app initialization.
+			$days = isset( $_GET['days'] ) ? \max( 1, \absint( $_GET['days'] ) ) : 1;
 
-		$config = array(
-			'restRoot'    => \esc_url_raw( \rest_url( 'daily-digest/v1' ) ),
-			'restNonce'   => \wp_create_nonce( 'wp_rest' ),
-			'currentUser' => \get_current_user_id(),
-			'initialDays' => $days,
-			'settingsUrl' => \admin_url( 'admin.php?page=daily-digest-settings' ),
-			'i18n'        => array(
-				'digestTitle' => \__( 'Digest', 'daily-digest' ),
-				'daysLabel'   => \__( 'Window (days):', 'daily-digest' ),
-				'refresh'     => \__( 'Refresh Digest', 'daily-digest' ),
-				'loading'     => \__( 'Loading activity…', 'daily-digest' ),
-				'loadError'   => \__( 'Unable to load digest data.', 'daily-digest' ),
-				'noItems'     => \__( 'No activity found for enabled providers.', 'daily-digest' ),
-				'time'        => \__( 'Time', 'daily-digest' ),
-				'provider'    => \__( 'Provider', 'daily-digest' ),
-				'type'        => \__( 'Type', 'daily-digest' ),
-				'title'       => \__( 'Title', 'daily-digest' ),
-				'summary'     => \__( 'Summary', 'daily-digest' ),
-				'openItem'    => \__( 'Open item', 'daily-digest' ),
-			),
-		);
+			$overview_config = array(
+				'restRoot'    => \esc_url_raw( \rest_url( 'daily-digest/v1' ) ),
+				'restNonce'   => \wp_create_nonce( 'wp_rest' ),
+				'currentUser' => \get_current_user_id(),
+				'initialDays' => $days,
+				'settingsUrl' => \admin_url( 'admin.php?page=daily-digest-settings' ),
+				'i18n'        => array(
+					'digestTitle' => \__( 'Digest', 'daily-digest' ),
+					'daysLabel'   => \__( 'Window (days):', 'daily-digest' ),
+					'refresh'     => \__( 'Refresh Digest', 'daily-digest' ),
+					'loading'     => \__( 'Loading activity…', 'daily-digest' ),
+					'loadError'   => \__( 'Unable to load digest data.', 'daily-digest' ),
+					'noItems'     => \__( 'No activity found for enabled providers.', 'daily-digest' ),
+					'time'        => \__( 'Time', 'daily-digest' ),
+					'provider'    => \__( 'Provider', 'daily-digest' ),
+					'type'        => \__( 'Type', 'daily-digest' ),
+					'title'       => \__( 'Title', 'daily-digest' ),
+					'summary'     => \__( 'Summary', 'daily-digest' ),
+					'openItem'    => \__( 'Open item', 'daily-digest' ),
+				),
+			);
 
-		\wp_add_inline_script(
-			'daily-digest-overview',
-			'window.dailyDigestOverviewConfig = ' . \wp_json_encode( $config ) . ';',
-			'before'
-		);
+			\wp_add_inline_script(
+				'daily-digest-overview',
+				'window.dailyDigestOverviewConfig = ' . \wp_json_encode( $overview_config ) . ';',
+				'before'
+			);
+		}
+
+		if ( $is_logs_page && \current_user_can( 'manage_options' ) ) {
+			$logs_page_config = array(
+				'restRoot'  => \esc_url_raw( \rest_url( 'daily-digest/v1' ) ),
+				'restNonce' => \wp_create_nonce( 'wp_rest' ),
+				'i18n'      => array(
+					'viewerTitle' => \__( 'Log Viewer', 'daily-digest' ),
+					'refresh'     => \__( 'Refresh Logs', 'daily-digest' ),
+					'loading'     => \__( 'Loading logs…', 'daily-digest' ),
+					'loadError'   => \__( 'Unable to load logs.', 'daily-digest' ),
+					'noLogs'      => \__( 'No log entries found.', 'daily-digest' ),
+					'timestamp'   => \__( 'Timestamp', 'daily-digest' ),
+					'provider'    => \__( 'Provider', 'daily-digest' ),
+					'context'     => \__( 'Context', 'daily-digest' ),
+					'method'      => \__( 'Method', 'daily-digest' ),
+					'status'      => \__( 'Status', 'daily-digest' ),
+					'url'         => \__( 'URL', 'daily-digest' ),
+					'summary'     => \__( 'Summary', 'daily-digest' ),
+					'openUrl'     => \__( 'Open URL', 'daily-digest' ),
+				),
+			);
+
+			\wp_add_inline_script(
+				'daily-digest-overview',
+				'window.dailyDigestLogsPageConfig = ' . \wp_json_encode( $logs_page_config ) . ';',
+				'before'
+			);
+		}
 	}
 
 	/**
@@ -212,13 +254,9 @@ class AdminPage {
 
 		$current_user_id = \get_current_user_id();
 		$this->maybe_save_settings( $current_user_id );
-		$current_settings   = $this->user_settings->get_for_user( $current_user_id );
-		$can_manage_options = \current_user_can( 'manage_options' );
-		$logging_enabled    = $this->api_logger->is_enabled();
-		$logging_directory  = $this->api_logger->get_log_directory_path();
-		$logging_url        = $this->api_logger->get_log_directory_url();
-		$rest_root          = \esc_url_raw( \rest_url( 'daily-digest/v1' ) );
-		$nonce              = \wp_create_nonce( 'wp_rest' );
+		$current_settings = $this->user_settings->get_for_user( $current_user_id );
+		$rest_root        = \esc_url_raw( \rest_url( 'daily-digest/v1' ) );
+		$nonce            = \wp_create_nonce( 'wp_rest' );
 		?>
 		<div class="wrap">
 			<h1><?php \esc_html_e( 'Daily Digest Settings', 'daily-digest' ); ?></h1>
@@ -278,34 +316,6 @@ class AdminPage {
 						<?php endforeach; ?>
 					</tbody>
 				</table>
-
-				<?php if ( $can_manage_options ) : ?>
-					<h2><?php \esc_html_e( 'Logging', 'daily-digest' ); ?></h2>
-					<p>
-						<label>
-							<input type="checkbox" name="daily_digest_enable_logging" value="1" <?php \checked( $logging_enabled ); ?> />
-							<?php \esc_html_e( 'Enable API request/response logging for provider activity.', 'daily-digest' ); ?>
-						</label>
-					</p>
-					<?php if ( ! empty( $logging_directory ) ) : ?>
-						<p>
-							<?php
-							echo \esc_html__( 'Logs are written to:', 'daily-digest' ) . ' ';
-							echo '<code>' . \esc_html( $logging_directory ) . '</code>';
-							?>
-						</p>
-					<?php endif; ?>
-					<?php if ( ! empty( $logging_url ) ) : ?>
-						<p>
-							<a class="button button-secondary" href="<?php echo \esc_url( $logging_url ); ?>" target="_blank" rel="noopener noreferrer">
-								<?php \esc_html_e( 'View Logs Directory', 'daily-digest' ); ?>
-							</a>
-						</p>
-					<?php endif; ?>
-					<p>
-						<?php \submit_button( \__( 'Run Logging Self-Test', 'daily-digest' ), 'secondary', 'daily_digest_run_log_test', false ); ?>
-					</p>
-				<?php endif; ?>
 
 				<?php \submit_button( \__( 'Save Settings', 'daily-digest' ) ); ?>
 			</form>
@@ -432,6 +442,62 @@ class AdminPage {
 	}
 
 	/**
+	 * Renders admin-only logs page.
+	 */
+	public function render_logs_page(): void {
+		if ( ! \current_user_can( 'manage_options' ) ) {
+			\wp_die( \esc_html__( 'You do not have permission to view this page.', 'daily-digest' ) );
+		}
+
+		$this->maybe_save_log_settings();
+
+		$logging_enabled   = $this->api_logger->is_enabled();
+		$logging_directory = $this->api_logger->get_log_directory_path();
+		$logging_url       = $this->api_logger->get_log_directory_url();
+		?>
+		<div class="wrap">
+			<h1><?php \esc_html_e( 'Daily Digest Logs', 'daily-digest' ); ?></h1>
+			<p><?php \esc_html_e( 'Manage API logging and review log entries.', 'daily-digest' ); ?></p>
+
+			<form method="post">
+				<?php \wp_nonce_field( 'daily_digest_save_log_settings', 'daily_digest_log_nonce' ); ?>
+				<h2><?php \esc_html_e( 'Logging', 'daily-digest' ); ?></h2>
+				<p>
+					<label>
+						<input type="checkbox" name="daily_digest_enable_logging" value="1" <?php \checked( $logging_enabled ); ?> />
+						<?php \esc_html_e( 'Enable API request/response logging for provider activity.', 'daily-digest' ); ?>
+					</label>
+				</p>
+				<?php if ( ! empty( $logging_directory ) ) : ?>
+					<p>
+						<?php
+						echo \esc_html__( 'Logs are written to:', 'daily-digest' ) . ' ';
+						echo '<code>' . \esc_html( $logging_directory ) . '</code>';
+						?>
+					</p>
+				<?php endif; ?>
+				<?php if ( ! empty( $logging_url ) ) : ?>
+					<p>
+						<a class="button button-secondary" href="<?php echo \esc_url( $logging_url ); ?>" target="_blank" rel="noopener noreferrer">
+							<?php \esc_html_e( 'View Logs Directory', 'daily-digest' ); ?>
+						</a>
+					</p>
+				<?php endif; ?>
+				<p>
+					<?php \submit_button( \__( 'Save Logging Settings', 'daily-digest' ), 'primary', 'daily_digest_save_log_settings', false ); ?>
+					<?php \submit_button( \__( 'Run Logging Self-Test', 'daily-digest' ), 'secondary', 'daily_digest_run_log_test', false ); ?>
+				</p>
+			</form>
+
+			<h2><?php \esc_html_e( 'Log Viewer', 'daily-digest' ); ?></h2>
+			<div id="daily-digest-log-viewer-app">
+				<p><?php \esc_html_e( 'Loading logs…', 'daily-digest' ); ?></p>
+			</div>
+		</div>
+		<?php
+	}
+
+	/**
 	 * Returns setup documentation links for a provider slug.
 	 *
 	 * @param string $provider_slug Provider slug.
@@ -484,34 +550,55 @@ class AdminPage {
 
 		$this->user_settings->save_for_user( $user_id, \wp_unslash( $settings ) );
 
-		if ( \current_user_can( 'manage_options' ) ) {
-			$enable_logging = ! empty( $_POST['daily_digest_enable_logging'] );
-			$this->api_logger->update_enabled( $enable_logging );
+		echo '<div class="notice notice-success is-dismissible"><p>' . \esc_html__( 'Daily Digest settings saved.', 'daily-digest' ) . '</p></div>';
+	}
 
-			$run_log_test = ! empty( $_POST['daily_digest_run_log_test'] );
-			if ( $run_log_test ) {
-				if ( ! $this->api_logger->is_enabled() ) {
-					echo '<div class="notice notice-warning is-dismissible"><p>' . \esc_html__( 'Enable logging before running the self-test.', 'daily-digest' ) . '</p></div>';
-				} else {
-					$provider_slugs = array_keys( $this->provider_registry->all() );
-					$test_results   = $this->api_logger->run_self_test( $provider_slugs );
-					$summary        = sprintf(
-						/* translators: 1: successful requests, 2: total requests. */
-						\esc_html__( 'Logging self-test complete. %1$d/%2$d requests succeeded.', 'daily-digest' ),
-						(int) $test_results['success'],
-						(int) $test_results['total']
-					);
-
-					echo '<div class="notice notice-info is-dismissible"><p>' . \esc_html( $summary ) . '</p></div>';
-
-					if ( ! empty( $test_results['errors'] ) && \is_array( $test_results['errors'] ) ) {
-						$errors = array_map( 'sanitize_text_field', $test_results['errors'] );
-						echo '<div class="notice notice-warning is-dismissible"><p>' . \esc_html__( 'Self-test errors:', 'daily-digest' ) . ' ' . \esc_html( implode( ' | ', $errors ) ) . '</p></div>';
-					}
-				}
-			}
+	/**
+	 * Saves logging settings and optionally runs a logging self-test.
+	 */
+	private function maybe_save_log_settings(): void {
+		if ( 'POST' !== \strtoupper( $_SERVER['REQUEST_METHOD'] ?? '' ) ) {
+			return;
 		}
 
-		echo '<div class="notice notice-success is-dismissible"><p>' . \esc_html__( 'Daily Digest settings saved.', 'daily-digest' ) . '</p></div>';
+		if ( ! \current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$nonce = $_POST['daily_digest_log_nonce'] ?? '';
+		if ( ! \wp_verify_nonce( \sanitize_text_field( \wp_unslash( $nonce ) ), 'daily_digest_save_log_settings' ) ) {
+			return;
+		}
+
+		$enable_logging = ! empty( $_POST['daily_digest_enable_logging'] );
+		$this->api_logger->update_enabled( $enable_logging );
+
+		echo '<div class="notice notice-success is-dismissible"><p>' . \esc_html__( 'Logging settings saved.', 'daily-digest' ) . '</p></div>';
+
+		$run_log_test = ! empty( $_POST['daily_digest_run_log_test'] );
+		if ( ! $run_log_test ) {
+			return;
+		}
+
+		if ( ! $this->api_logger->is_enabled() ) {
+			echo '<div class="notice notice-warning is-dismissible"><p>' . \esc_html__( 'Enable logging before running the self-test.', 'daily-digest' ) . '</p></div>';
+			return;
+		}
+
+		$provider_slugs = array_keys( $this->provider_registry->all() );
+		$test_results   = $this->api_logger->run_self_test( $provider_slugs );
+		$summary        = sprintf(
+			/* translators: 1: successful requests, 2: total requests. */
+			\esc_html__( 'Logging self-test complete. %1$d/%2$d requests succeeded.', 'daily-digest' ),
+			(int) $test_results['success'],
+			(int) $test_results['total']
+		);
+
+		echo '<div class="notice notice-info is-dismissible"><p>' . \esc_html( $summary ) . '</p></div>';
+
+		if ( ! empty( $test_results['errors'] ) && \is_array( $test_results['errors'] ) ) {
+			$errors = array_map( 'sanitize_text_field', $test_results['errors'] );
+			echo '<div class="notice notice-warning is-dismissible"><p>' . \esc_html__( 'Self-test errors:', 'daily-digest' ) . ' ' . \esc_html( implode( ' | ', $errors ) ) . '</p></div>';
+		}
 	}
 }

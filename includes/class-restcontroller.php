@@ -39,16 +39,25 @@ class RestController {
 	private DigestService $digest_service;
 
 	/**
+	 * API logger service.
+	 *
+	 * @var ApiLogger
+	 */
+	private ApiLogger $api_logger;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param ProviderRegistry $provider_registry Provider registry.
 	 * @param UserSettings     $user_settings     User settings.
 	 * @param DigestService    $digest_service    Digest service.
+	 * @param ApiLogger        $api_logger        API logger service.
 	 */
-	public function __construct( ProviderRegistry $provider_registry, UserSettings $user_settings, DigestService $digest_service ) {
+	public function __construct( ProviderRegistry $provider_registry, UserSettings $user_settings, DigestService $digest_service, ApiLogger $api_logger ) {
 		$this->provider_registry = $provider_registry;
 		$this->user_settings     = $user_settings;
 		$this->digest_service    = $digest_service;
+		$this->api_logger        = $api_logger;
 	}
 
 	/**
@@ -115,6 +124,165 @@ class RestController {
 				'permission_callback' => array( $this, 'can_read' ),
 			)
 		);
+
+		\register_rest_route(
+			'daily-digest/v1',
+			'/logs',
+			array(
+				'methods'             => \WP_REST_Server::READABLE,
+				'callback'            => array( $this, 'get_logs' ),
+				'permission_callback' => array( $this, 'can_manage_options' ),
+				'args'                => array(
+					'provider' => array(
+						'type'              => 'string',
+						'required'          => false,
+						'sanitize_callback' => 'sanitize_key',
+					),
+					'limit'    => array(
+						'type'              => 'integer',
+						'required'          => false,
+						'sanitize_callback' => 'absint',
+					),
+				),
+			)
+		);
+	}
+
+	/**
+	 * Returns parsed log entries from provider log files.
+	 *
+	 * @param \WP_REST_Request $request REST request.
+	 *
+	 * @return \WP_REST_Response
+	 */
+	public function get_logs( \WP_REST_Request $request ): \WP_REST_Response {
+		$provider_slug = \sanitize_key( (string) $request->get_param( 'provider' ) );
+		$limit         = (int) $request->get_param( 'limit' );
+
+		if ( $limit < 1 ) {
+			$limit = 300;
+		}
+
+		if ( $limit > 2000 ) {
+			$limit = 2000;
+		}
+
+		$entries = array();
+		$files   = $this->get_log_files( $provider_slug );
+
+		foreach ( $files as $file_path ) {
+			if ( ! \is_readable( $file_path ) ) {
+				continue;
+			}
+
+			$provider_from_file = \sanitize_key( (string) \pathinfo( $file_path, PATHINFO_FILENAME ) );
+
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file -- Reading plugin-owned debug logs from uploads.
+			$lines = \file( $file_path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES );
+			if ( ! \is_array( $lines ) ) {
+				continue;
+			}
+
+			foreach ( $lines as $line ) {
+				$decoded = \json_decode( (string) $line, true );
+				if ( ! \is_array( $decoded ) ) {
+					continue;
+				}
+
+				$entries[] = $this->normalize_log_entry( $provider_from_file, $decoded );
+			}
+		}
+
+		\usort(
+			$entries,
+			static function ( array $left, array $right ): int {
+				return \strcmp( (string) ( $right['timestamp'] ?? '' ), (string) ( $left['timestamp'] ?? '' ) );
+			}
+		);
+
+		$total_count = \count( $entries );
+		$entries     = \array_slice( $entries, 0, $limit );
+
+		return new \WP_REST_Response(
+			array(
+				'items' => $entries,
+				'total' => $total_count,
+			),
+			200
+		);
+	}
+
+	/**
+	 * Normalizes one raw log entry for UI rendering.
+	 *
+	 * @param string               $provider_slug Provider slug from file name.
+	 * @param array<string, mixed> $payload       Raw log payload.
+	 *
+	 * @return array<string, string>
+	 */
+	private function normalize_log_entry( string $provider_slug, array $payload ): array {
+		$args    = isset( $payload['args'] ) && \is_array( $payload['args'] ) ? $payload['args'] : array();
+		$data    = isset( $payload['data'] ) && \is_array( $payload['data'] ) ? $payload['data'] : array();
+		$method  = isset( $args['method'] ) ? \sanitize_text_field( (string) $args['method'] ) : '';
+		$status  = '';
+		$summary = '';
+
+		if ( isset( $data['response'] ) && \is_array( $data['response'] ) ) {
+			if ( isset( $data['response']['code'] ) ) {
+				$status = (string) \absint( $data['response']['code'] );
+			}
+
+			if ( isset( $data['response']['message'] ) ) {
+				$summary = \sanitize_text_field( (string) $data['response']['message'] );
+			}
+		}
+
+		if ( isset( $data['error_messages'] ) && \is_array( $data['error_messages'] ) ) {
+			$errors  = \array_map( 'sanitize_text_field', $data['error_messages'] );
+			$summary = \implode( ' | ', $errors );
+		}
+
+		if ( empty( $summary ) && isset( $payload['context'] ) ) {
+			$summary = \sanitize_text_field( (string) $payload['context'] );
+		}
+
+		return array(
+			'timestamp' => \sanitize_text_field( (string) ( $payload['timestamp'] ?? '' ) ),
+			'provider'  => \sanitize_text_field( $provider_slug ),
+			'context'   => \sanitize_text_field( (string) ( $payload['context'] ?? '' ) ),
+			'method'    => $method,
+			'status'    => $status,
+			'url'       => \esc_url_raw( (string) ( $payload['url'] ?? '' ) ),
+			'summary'   => $summary,
+		);
+	}
+
+	/**
+	 * Gets log file paths for one provider or all providers.
+	 *
+	 * @param string $provider_slug Optional provider slug filter.
+	 *
+	 * @return array<int, string>
+	 */
+	private function get_log_files( string $provider_slug = '' ): array {
+		$directory = $this->api_logger->get_log_directory_path();
+		if ( empty( $directory ) || ! \is_dir( $directory ) ) {
+			return array();
+		}
+
+		if ( ! empty( $provider_slug ) ) {
+			$file = \trailingslashit( $directory ) . $provider_slug . '.log';
+			return \file_exists( $file ) ? array( $file ) : array();
+		}
+
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_glob -- Reading plugin-owned debug logs from uploads.
+		$files = \glob( \trailingslashit( $directory ) . '*.log' );
+
+		if ( false === $files || ! \is_array( $files ) ) {
+			return array();
+		}
+
+		return $files;
 	}
 
 	/**
@@ -291,5 +459,14 @@ class RestController {
 	 */
 	public function can_read(): bool {
 		return \is_user_logged_in() && \current_user_can( 'read' );
+	}
+
+	/**
+	 * Checks manage_options capability for admin-only endpoints.
+	 *
+	 * @return bool
+	 */
+	public function can_manage_options(): bool {
+		return \is_user_logged_in() && \current_user_can( 'manage_options' );
 	}
 }

@@ -9,6 +9,7 @@ import {
 import { __ } from "@wordpress/i18n";
 import { Button, Spinner } from "@wordpress/components";
 import { DataViews, filterSortAndPaginate } from "@wordpress/dataviews/wp";
+import { LogViewerApp } from "./log-viewer-app";
 import "./style.scss";
 
 const defaultI18n = {
@@ -291,11 +292,19 @@ const App = ({ config }) => {
 };
 
 domReady(() => {
-  const target = document.getElementById("daily-digest-overview-app");
-  if (!target) {
-    return;
+  const overviewTarget = document.getElementById("daily-digest-overview-app");
+  const overviewConfig = window.dailyDigestOverviewConfig || {};
+
+  if (overviewTarget) {
+    const root = createRoot(overviewTarget);
+    root.render(<App config={overviewConfig} />);
   }
 
-  const root = createRoot(target);
-  root.render(<App config={window.dailyDigestOverviewConfig || {}} />);
+  const logViewerTarget = document.getElementById("daily-digest-log-viewer-app");
+  const logViewerConfig = window.dailyDigestLogsPageConfig || {};
+
+  if (logViewerTarget) {
+    const logViewerRoot = createRoot(logViewerTarget);
+    logViewerRoot.render(<LogViewerApp config={logViewerConfig} />);
+  }
 });

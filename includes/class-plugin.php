@@ -102,7 +102,7 @@ class Plugin {
 		$this->user_settings     = new UserSettings();
 		$this->api_logger        = new ApiLogger();
 		$this->digest_service    = new DigestService( $this->provider_registry, $this->user_settings );
-		$this->rest_controller   = new RestController( $this->provider_registry, $this->user_settings, $this->digest_service );
+		$this->rest_controller   = new RestController( $this->provider_registry, $this->user_settings, $this->digest_service, $this->api_logger );
 		$this->admin_page        = new AdminPage( $this->provider_registry, $this->user_settings, $this->digest_service, $this->api_logger );
 
 		$this->register_builtin_providers();

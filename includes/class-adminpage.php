@@ -534,6 +534,8 @@ class AdminPage {
 			'slack'   => array(
 				'Create Slack App'                      => 'https://api.slack.com/apps',
 				'OAuth & Permissions (Bot/User Tokens)' => 'https://api.slack.com/authentication/oauth-v2',
+				'Search API (search.messages)'          => 'https://api.slack.com/methods/search.messages',
+				'Auth Test (auth.test)'                 => 'https://api.slack.com/methods/auth.test',
 				'Find Slack User ID'                    => 'https://api.slack.com/methods/users.lookupByEmail',
 			),
 		);

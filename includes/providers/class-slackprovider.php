@@ -44,9 +44,10 @@ class SlackProvider implements ProviderInterface {
 	 */
 	public function get_fields(): array {
 		return array(
-			'workspace' => \__( 'Workspace Subdomain (e.g. myworkspace)', 'daily-digest' ),
-			'user_id'   => \__( 'Slack User ID (U…)', 'daily-digest' ),
-			'bot_token' => \__( 'Bot User OAuth Token (xoxb-…)', 'daily-digest' ),
+			'workspace'  => \__( 'Workspace Subdomain (e.g. myworkspace)', 'daily-digest' ),
+			'user_id'    => \__( 'Slack User ID (U…)', 'daily-digest' ),
+			'user_token' => \__( 'User OAuth Token (xoxp-…)', 'daily-digest' ),
+			'bot_token'  => \__( 'Bot User OAuth Token (xoxb-…)', 'daily-digest' ),
 		);
 	}
 
@@ -58,12 +59,14 @@ class SlackProvider implements ProviderInterface {
 	 * @return array{success:bool,message:string,details?:array}
 	 */
 	public function test_credentials( array $provider_fields ): array {
-		$token = isset( $provider_fields['bot_token'] ) ? \trim( (string) $provider_fields['bot_token'] ) : '';
+		$user_token = isset( $provider_fields['user_token'] ) ? \trim( (string) $provider_fields['user_token'] ) : '';
+		$bot_token  = isset( $provider_fields['bot_token'] ) ? \trim( (string) $provider_fields['bot_token'] ) : '';
+		$token      = ! empty( $user_token ) ? $user_token : $bot_token;
 
 		if ( empty( $token ) ) {
 			return array(
 				'success' => false,
-				'message' => __( 'Slack bot token is required.', 'daily-digest' ),
+				'message' => __( 'Slack token is required. For notifications, use a User OAuth token (xoxp-...) with search:read scope.', 'daily-digest' ),
 			);
 		}
 
@@ -94,11 +97,27 @@ class SlackProvider implements ProviderInterface {
 			);
 		}
 
+		$search_payload = $this->call_api_method(
+			'search.messages',
+			array(
+				'query' => 'from:me',
+				'count' => '1',
+			),
+			$token
+		);
+
+		if ( null === $search_payload ) {
+			return array(
+				'success' => false,
+				'message' => __( 'Slack token validated, but message search failed. Ensure the token has search:read scope and is a user token.', 'daily-digest' ),
+			);
+		}
+
 		$team = isset( $payload['team'] ) ? (string) $payload['team'] : '';
 
 		return array(
 			'success' => true,
-			'message' => __( 'Slack credentials are valid.', 'daily-digest' ),
+			'message' => __( 'Slack credentials are valid for notification queries.', 'daily-digest' ),
 			'details' => array(
 				'team' => $team,
 			),
@@ -116,7 +135,7 @@ class SlackProvider implements ProviderInterface {
 	 */
 	public function fetch_activity( int $user_id, array $provider_settings = array(), array $options = array() ): array {
 		$fields = $provider_settings['fields'] ?? array();
-		$items  = $this->fetch_messages( $fields, $options );
+		$items  = $this->fetch_notification_items( $fields, $options );
 
 		/**
 		 * Filters Slack provider activity items.
@@ -139,70 +158,67 @@ class SlackProvider implements ProviderInterface {
 	}
 
 	/**
-	 * Fetches recent Slack messages for configured user.
+	 * Fetches Slack notification-like activity and own comments via search API.
 	 *
 	 * @param array $fields  Provider field values.
 	 * @param array $options Digest options.
 	 *
 	 * @return array
 	 */
-	private function fetch_messages( array $fields, array $options ): array {
-		$workspace = isset( $fields['workspace'] ) ? \trim( (string) $fields['workspace'] ) : '';
-		$user_id   = isset( $fields['user_id'] ) ? \trim( (string) $fields['user_id'] ) : '';
-		$token     = isset( $fields['bot_token'] ) ? \trim( (string) $fields['bot_token'] ) : '';
+	private function fetch_notification_items( array $fields, array $options ): array {
+		$workspace  = isset( $fields['workspace'] ) ? \trim( (string) $fields['workspace'] ) : '';
+		$user_id    = isset( $fields['user_id'] ) ? \trim( (string) $fields['user_id'] ) : '';
+		$user_token = isset( $fields['user_token'] ) ? \trim( (string) $fields['user_token'] ) : '';
+		$bot_token  = isset( $fields['bot_token'] ) ? \trim( (string) $fields['bot_token'] ) : '';
+		$token      = ! empty( $user_token ) ? $user_token : $bot_token;
 
 		if ( empty( $user_id ) || empty( $token ) ) {
 			return array();
 		}
 
-		$days         = isset( $options['days'] ) ? \max( 1, \absint( $options['days'] ) ) : 1;
-		$oldest_unix  = \strtotime( '-' . $days . ' days' );
-		$oldest_value = false !== $oldest_unix ? (string) $oldest_unix : '0';
-		$items        = array();
-		$channels     = $this->fetch_channels( $token );
-		$max_channels = 20;
-		$processed    = 0;
+		$days       = isset( $options['days'] ) ? \max( 1, \absint( $options['days'] ) ) : 1;
+		$after_date = \gmdate( 'Y-m-d', \strtotime( '-' . $days . ' days' ) );
+		$queries    = array(
+			array(
+				'type'  => 'notification',
+				'query' => '<@' . $user_id . '> after:' . $after_date,
+			),
+			array(
+				'type'  => 'comment',
+				'query' => 'from:me after:' . $after_date,
+			),
+		);
+		$items      = array();
+		$seen       = array();
 
-		foreach ( $channels as $channel ) {
-			if ( $processed >= $max_channels ) {
-				break;
-			}
+		foreach ( $queries as $query_item ) {
+			$query_type  = isset( $query_item['type'] ) ? (string) $query_item['type'] : '';
+			$query_value = isset( $query_item['query'] ) ? (string) $query_item['query'] : '';
 
-			$channel_id = isset( $channel['id'] ) ? (string) $channel['id'] : '';
-			if ( empty( $channel_id ) ) {
+			if ( empty( $query_type ) || empty( $query_value ) ) {
 				continue;
 			}
 
-			$history_payload = $this->call_api_method(
-				'conversations.history',
-				array(
-					'channel'   => $channel_id,
-					'limit'     => '100',
-					'oldest'    => $oldest_value,
-					'inclusive' => 'true',
-				),
-				$token
-			);
+			$matches = $this->search_messages( $query_value, $token );
 
-			if ( null === $history_payload ) {
-				++$processed;
-				continue;
-			}
-
-			$messages = isset( $history_payload['messages'] ) && \is_array( $history_payload['messages'] ) ? $history_payload['messages'] : array();
-			foreach ( $messages as $message ) {
-				if ( ! \is_array( $message ) ) {
+			foreach ( $matches as $match ) {
+				if ( ! \is_array( $match ) ) {
 					continue;
 				}
 
-				if ( ! isset( $message['user'] ) || $user_id !== (string) $message['user'] ) {
+				$item = $this->map_search_match_to_item( $match, $query_type, $workspace );
+				if ( empty( $item ) ) {
 					continue;
 				}
 
-				$items[] = $this->map_message_to_item( $message, $channel, $workspace );
-			}
+				$dedupe_key = (string) ( $item['url'] ?? '' ) . '|' . (string) ( $item['timestamp'] ?? '' ) . '|' . (string) ( $item['type'] ?? '' );
+				if ( isset( $seen[ $dedupe_key ] ) ) {
+					continue;
+				}
 
-			++$processed;
+				$seen[ $dedupe_key ] = true;
+				$items[]             = $item;
+			}
 		}
 
 		return \array_values(
@@ -216,49 +232,104 @@ class SlackProvider implements ProviderInterface {
 	}
 
 	/**
-	 * Fetches accessible channels from Slack.
+	 * Searches Slack messages with pagination.
 	 *
+	 * @param string $query Search query string.
 	 * @param string $token Slack token.
 	 *
 	 * @return array<int, array<string, mixed>>
 	 */
-	private function fetch_channels( string $token ): array {
-		$channels = array();
-		$cursor   = '';
-		$max_runs = 5;
-		$current  = 0;
+	private function search_messages( string $query, string $token ): array {
+		$matches   = array();
+		$page      = 1;
+		$max_pages = 3;
 
-		while ( $current < $max_runs ) {
-			$params = array(
-				'limit'            => '200',
-				'exclude_archived' => 'true',
-				'types'            => 'public_channel,private_channel',
+		while ( $page <= $max_pages ) {
+			$payload = $this->call_api_method(
+				'search.messages',
+				array(
+					'query'    => $query,
+					'count'    => '100',
+					'page'     => (string) $page,
+					'sort'     => 'timestamp',
+					'sort_dir' => 'desc',
+				),
+				$token
 			);
 
-			if ( ! empty( $cursor ) ) {
-				$params['cursor'] = $cursor;
-			}
-
-			$payload = $this->call_api_method( 'conversations.list', $params, $token );
 			if ( null === $payload ) {
 				break;
 			}
 
-			$batch = isset( $payload['channels'] ) && \is_array( $payload['channels'] ) ? $payload['channels'] : array();
+			$batch = isset( $payload['messages']['matches'] ) && \is_array( $payload['messages']['matches'] ) ? $payload['messages']['matches'] : array();
 			if ( ! empty( $batch ) ) {
-				$channels = array_merge( $channels, $batch );
+				$matches = \array_merge( $matches, $batch );
 			}
 
-			$next_cursor = isset( $payload['response_metadata']['next_cursor'] ) ? (string) $payload['response_metadata']['next_cursor'] : '';
-			if ( empty( $next_cursor ) ) {
+			$page_count = isset( $payload['messages']['pagination']['page_count'] ) ? \absint( $payload['messages']['pagination']['page_count'] ) : 1;
+			if ( $page >= $page_count ) {
 				break;
 			}
 
-			$cursor = $next_cursor;
-			++$current;
+			++$page;
 		}
 
-		return $channels;
+		return $matches;
+	}
+
+	/**
+	 * Maps Slack search match payload to digest item.
+	 *
+	 * @param array  $search_item Slack search result item.
+	 * @param string $query_type Query type label.
+	 * @param string $workspace  Slack workspace subdomain.
+	 *
+	 * @return array
+	 */
+	private function map_search_match_to_item( array $search_item, string $query_type, string $workspace ): array {
+		$text         = isset( $search_item['text'] ) ? \trim( (string) $search_item['text'] ) : '';
+		$timestamp_ts = isset( $search_item['ts'] ) ? (string) $search_item['ts'] : '';
+		$timestamp    = '';
+
+		if ( ! empty( $timestamp_ts ) ) {
+			$timestamp = \gmdate( 'c', (int) \floor( (float) $timestamp_ts ) );
+		}
+
+		$channel      = isset( $search_item['channel'] ) && \is_array( $search_item['channel'] ) ? $search_item['channel'] : array();
+		$channel_name = isset( $channel['name'] ) ? (string) $channel['name'] : '';
+
+		if ( 'comment' === $query_type ) {
+			$title = ! empty( $channel_name )
+				? \sprintf(
+					/* translators: %s: Slack channel name. */
+					__( 'Your comment in #%s', 'daily-digest' ),
+					$channel_name
+				)
+				: __( 'Your Slack Comment', 'daily-digest' );
+		} else {
+			$title = ! empty( $channel_name )
+				? \sprintf(
+					/* translators: %s: Slack channel name. */
+					__( 'Mention in #%s', 'daily-digest' ),
+					$channel_name
+				)
+				: __( 'Slack Notification', 'daily-digest' );
+		}
+
+		$url = isset( $search_item['permalink'] ) ? \esc_url_raw( (string) $search_item['permalink'] ) : '';
+		if ( empty( $url ) ) {
+			$url = $this->build_message_url( $workspace, $channel, $timestamp_ts );
+		}
+
+		return array(
+			'provider'  => 'Slack',
+			'type'      => 'comment' === $query_type ? 'comment' : 'notification',
+			'timestamp' => $timestamp,
+			'title'     => $title,
+			'summary'   => $text,
+			'url'       => $url,
+			'raw'       => $search_item,
+		);
 	}
 
 	/**
@@ -299,46 +370,6 @@ class SlackProvider implements ProviderInterface {
 		}
 
 		return $payload;
-	}
-
-	/**
-	 * Maps Slack message payload to digest item.
-	 *
-	 * @param array  $message   Slack message payload.
-	 * @param array  $channel   Slack channel payload.
-	 * @param string $workspace Slack workspace subdomain.
-	 *
-	 * @return array
-	 */
-	private function map_message_to_item( array $message, array $channel, string $workspace ): array {
-		$text         = isset( $message['text'] ) ? \trim( (string) $message['text'] ) : '';
-		$timestamp_ts = isset( $message['ts'] ) ? (string) $message['ts'] : '';
-		$timestamp    = '';
-
-		if ( ! empty( $timestamp_ts ) ) {
-			$timestamp = \gmdate( 'c', (int) floor( (float) $timestamp_ts ) );
-		}
-
-		$channel_name = isset( $channel['name'] ) ? (string) $channel['name'] : '';
-		$title        = ! empty( $channel_name )
-			? \sprintf(
-				/* translators: %s: Slack channel name. */
-				__( 'Message in #%s', 'daily-digest' ),
-				$channel_name
-			)
-			: __( 'Slack Message', 'daily-digest' );
-
-		$url = $this->build_message_url( $workspace, $channel, $timestamp_ts );
-
-		return array(
-			'provider'  => 'Slack',
-			'type'      => 'message',
-			'timestamp' => $timestamp,
-			'title'     => $title,
-			'summary'   => $text,
-			'url'       => $url,
-			'raw'       => $message,
-		);
 	}
 
 	/**

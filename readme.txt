@@ -75,6 +75,18 @@ Install coding standards tools:
 
 - `composer install`
 
+Install JavaScript build tools:
+
+- `npm install`
+
+Build admin React/DataViews assets:
+
+- `npm run build`
+
+Watch and rebuild assets during development:
+
+- `npm run start`
+
 Run WordPress coding standards checks:
 
 - `composer lint`

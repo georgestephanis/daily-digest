@@ -64,6 +64,13 @@ class Plugin {
 	private AdminPage $admin_page;
 
 	/**
+	 * HTTP API logger service.
+	 *
+	 * @var ApiLogger
+	 */
+	private ApiLogger $api_logger;
+
+	/**
 	 * Returns singleton instance.
 	 *
 	 * @return Plugin
@@ -86,13 +93,15 @@ class Plugin {
 
 		$this->provider_registry = new ProviderRegistry();
 		$this->user_settings     = new UserSettings();
+		$this->api_logger        = new ApiLogger();
 		$this->digest_service    = new DigestService( $this->provider_registry, $this->user_settings );
-		$this->admin_page        = new AdminPage( $this->provider_registry, $this->user_settings, $this->digest_service );
+		$this->admin_page        = new AdminPage( $this->provider_registry, $this->user_settings, $this->digest_service, $this->api_logger );
 
 		$this->register_builtin_providers();
 		\do_action( 'daily_digest_register_providers', $this->provider_registry );
 		\do_action( 'dd_register_providers', $this->provider_registry );
 
+		$this->api_logger->register_hooks();
 		$this->admin_page->register();
 		$this->booted = true;
 	}

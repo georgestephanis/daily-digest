@@ -62,7 +62,12 @@ class DigestService {
 				continue;
 			}
 
-			$provider_items = $provider->fetch_activity( $user_id, $provider_settings, $options );
+			$provider_items = ProviderExecutionContext::run_with_provider(
+				(string) $slug,
+				static function () use ( $provider, $user_id, $provider_settings, $options ): array {
+					return $provider->fetch_activity( $user_id, $provider_settings, $options );
+				}
+			);
 
 			foreach ( $provider_items as $item ) {
 				$normalized = $this->normalize_item( $item, $provider );

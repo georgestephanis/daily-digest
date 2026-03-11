@@ -39,16 +39,25 @@ class AdminPage {
 	private DigestService $digest_service;
 
 	/**
+	 * HTTP API logger service.
+	 *
+	 * @var ApiLogger
+	 */
+	private ApiLogger $api_logger;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param ProviderRegistry $provider_registry Provider registry.
 	 * @param UserSettings     $user_settings     User settings service.
 	 * @param DigestService    $digest_service    Digest service.
+	 * @param ApiLogger        $api_logger        API logger service.
 	 */
-	public function __construct( ProviderRegistry $provider_registry, UserSettings $user_settings, DigestService $digest_service ) {
+	public function __construct( ProviderRegistry $provider_registry, UserSettings $user_settings, DigestService $digest_service, ApiLogger $api_logger ) {
 		$this->provider_registry = $provider_registry;
 		$this->user_settings     = $user_settings;
 		$this->digest_service    = $digest_service;
+		$this->api_logger        = $api_logger;
 	}
 
 	/**
@@ -179,7 +188,11 @@ class AdminPage {
 
 		$current_user_id = \get_current_user_id();
 		$this->maybe_save_settings( $current_user_id );
-		$current_settings = $this->user_settings->get_for_user( $current_user_id );
+		$current_settings   = $this->user_settings->get_for_user( $current_user_id );
+		$can_manage_options = \current_user_can( 'manage_options' );
+		$logging_enabled    = $this->api_logger->is_enabled();
+		$logging_directory  = $this->api_logger->get_log_directory_path();
+		$logging_url        = $this->api_logger->get_log_directory_url();
 		?>
 		<div class="wrap">
 			<h1><?php \esc_html_e( 'Daily Digest Settings', 'daily-digest' ); ?></h1>
@@ -229,6 +242,32 @@ class AdminPage {
 						<?php endforeach; ?>
 					</tbody>
 				</table>
+
+				<?php if ( $can_manage_options ) : ?>
+					<h2><?php \esc_html_e( 'Logging', 'daily-digest' ); ?></h2>
+					<p>
+						<label>
+							<input type="checkbox" name="daily_digest_enable_logging" value="1" <?php \checked( $logging_enabled ); ?> />
+							<?php \esc_html_e( 'Enable API request/response logging for provider activity.', 'daily-digest' ); ?>
+						</label>
+					</p>
+					<?php if ( ! empty( $logging_directory ) ) : ?>
+						<p>
+							<?php
+							echo \esc_html__( 'Logs are written to:', 'daily-digest' ) . ' ';
+							echo '<code>' . \esc_html( $logging_directory ) . '</code>';
+							?>
+						</p>
+					<?php endif; ?>
+					<?php if ( ! empty( $logging_url ) ) : ?>
+						<p>
+							<a class="button button-secondary" href="<?php echo \esc_url( $logging_url ); ?>" target="_blank" rel="noopener noreferrer">
+								<?php \esc_html_e( 'View Logs Directory', 'daily-digest' ); ?>
+							</a>
+						</p>
+					<?php endif; ?>
+				<?php endif; ?>
+
 				<?php \submit_button( \__( 'Save Settings', 'daily-digest' ) ); ?>
 			</form>
 		</div>
@@ -287,6 +326,12 @@ class AdminPage {
 		}
 
 		$this->user_settings->save_for_user( $user_id, \wp_unslash( $settings ) );
+
+		if ( \current_user_can( 'manage_options' ) ) {
+			$enable_logging = ! empty( $_POST['daily_digest_enable_logging'] );
+			$this->api_logger->update_enabled( $enable_logging );
+		}
+
 		echo '<div class="notice notice-success is-dismissible"><p>' . \esc_html__( 'Daily Digest settings saved.', 'daily-digest' ) . '</p></div>';
 	}
 }

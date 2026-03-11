@@ -45,8 +45,23 @@ Optional fields:
 
 1. Upload the `daily-digest` folder to the `/wp-content/plugins/` directory.
 2. Activate the plugin through the Plugins menu in WordPress.
-3. Go to Users > Daily Digest.
+3. Go to Daily Digest > Settings.
 4. Enable and configure providers for the logged-in user.
+
+== Provider Authentication Setup ==
+
+Use the official provider docs for token/auth setup:
+
+- GitHub
+	- Personal access tokens: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens
+	- REST API auth: https://docs.github.com/en/rest/authentication/authenticating-to-the-rest-api
+- ClickUp
+	- API auth: https://developer.clickup.com/docs/authentication
+	- Personal token setup: https://help.clickup.com/hc/en-us/articles/6303426241687-Use-the-ClickUp-API
+- Slack
+	- Create/manage app: https://api.slack.com/apps
+	- OAuth v2 and token scopes: https://api.slack.com/authentication/oauth-v2
+	- User lookup method (for User ID): https://api.slack.com/methods/users.lookupByEmail
 
 == Extending ==
 

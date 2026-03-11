@@ -71,3 +71,11 @@ Run WordPress coding standards checks:
 Auto-fix supported coding standards issues:
 
 - `composer lint:fix`
+
+Reusable release notes template:
+
+- `.github/release-template.md`
+
+GitHub auto-generated release note categories:
+
+- `.github/release.yml`

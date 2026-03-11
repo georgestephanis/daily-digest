@@ -89,6 +89,53 @@ class ApiLogger {
 	}
 
 	/**
+	 * Runs a logging self-test for provider slugs.
+	 *
+	 * @param array<int, string> $provider_slugs Provider slugs to test.
+	 *
+	 * @return array<string, mixed>
+	 */
+	public function run_self_test( array $provider_slugs ): array {
+		$results  = array(
+			'total'   => 0,
+			'success' => 0,
+			'errors'  => array(),
+		);
+		$test_url = \home_url( '/' );
+
+		foreach ( $provider_slugs as $provider_slug ) {
+			$provider_slug = \sanitize_key( (string) $provider_slug );
+			if ( empty( $provider_slug ) ) {
+				continue;
+			}
+
+			++$results['total'];
+
+			ProviderExecutionContext::run_with_provider(
+				$provider_slug,
+				static function () use ( $provider_slug, $test_url, &$results ): array {
+					$response = \wp_remote_get(
+						$test_url,
+						array(
+							'timeout' => 10,
+						)
+					);
+
+					if ( \is_wp_error( $response ) ) {
+						$results['errors'][] = $provider_slug . ': ' . $response->get_error_message();
+						return array();
+					}
+
+					++$results['success'];
+					return array();
+				}
+			);
+		}
+
+		return $results;
+	}
+
+	/**
 	 * Handles HTTP API debug callback and writes provider logs.
 	 *
 	 * @param mixed  $response Response or request data.

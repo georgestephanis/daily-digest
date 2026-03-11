@@ -266,6 +266,9 @@ class AdminPage {
 							</a>
 						</p>
 					<?php endif; ?>
+					<p>
+						<?php \submit_button( \__( 'Run Logging Self-Test', 'daily-digest' ), 'secondary', 'daily_digest_run_log_test', false ); ?>
+					</p>
 				<?php endif; ?>
 
 				<?php \submit_button( \__( 'Save Settings', 'daily-digest' ) ); ?>
@@ -330,6 +333,29 @@ class AdminPage {
 		if ( \current_user_can( 'manage_options' ) ) {
 			$enable_logging = ! empty( $_POST['daily_digest_enable_logging'] );
 			$this->api_logger->update_enabled( $enable_logging );
+
+			$run_log_test = ! empty( $_POST['daily_digest_run_log_test'] );
+			if ( $run_log_test ) {
+				if ( ! $this->api_logger->is_enabled() ) {
+					echo '<div class="notice notice-warning is-dismissible"><p>' . \esc_html__( 'Enable logging before running the self-test.', 'daily-digest' ) . '</p></div>';
+				} else {
+					$provider_slugs = array_keys( $this->provider_registry->all() );
+					$test_results   = $this->api_logger->run_self_test( $provider_slugs );
+					$summary        = sprintf(
+						/* translators: 1: successful requests, 2: total requests. */
+						\esc_html__( 'Logging self-test complete. %1$d/%2$d requests succeeded.', 'daily-digest' ),
+						(int) $test_results['success'],
+						(int) $test_results['total']
+					);
+
+					echo '<div class="notice notice-info is-dismissible"><p>' . \esc_html( $summary ) . '</p></div>';
+
+					if ( ! empty( $test_results['errors'] ) && \is_array( $test_results['errors'] ) ) {
+						$errors = array_map( 'sanitize_text_field', $test_results['errors'] );
+						echo '<div class="notice notice-warning is-dismissible"><p>' . \esc_html__( 'Self-test errors:', 'daily-digest' ) . ' ' . \esc_html( implode( ' | ', $errors ) ) . '</p></div>';
+					}
+				}
+			}
 		}
 
 		echo '<div class="notice notice-success is-dismissible"><p>' . \esc_html__( 'Daily Digest settings saved.', 'daily-digest' ) . '</p></div>';

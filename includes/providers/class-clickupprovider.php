@@ -67,7 +67,7 @@ class ClickupProvider extends AbstractProvider {
 			'https://api.clickup.com/api/v2/user',
 			array(
 				'headers' => array(
-					'Authorization' => 'Bearer ' . $token,
+					'Authorization' => $this->build_authorization_header( $token ),
 				),
 			)
 		);
@@ -178,7 +178,7 @@ class ClickupProvider extends AbstractProvider {
 					$request_url,
 					array(
 						'headers' => array(
-							'Authorization' => 'Bearer ' . $token,
+							'Authorization' => $this->build_authorization_header( $token ),
 						),
 					)
 				);
@@ -257,7 +257,7 @@ class ClickupProvider extends AbstractProvider {
 			'https://api.clickup.com/api/v2/team',
 			array(
 				'headers' => array(
-					'Authorization' => 'Bearer ' . $token,
+					'Authorization' => $this->build_authorization_header( $token ),
 				),
 			)
 		);
@@ -283,6 +283,23 @@ class ClickupProvider extends AbstractProvider {
 		}
 
 		return $resolved;
+	}
+
+	/**
+	 * Builds the ClickUp Authorization header value for the active service type.
+	 *
+	 * @param string $token Access token.
+	 *
+	 * @return string
+	 */
+	private function build_authorization_header( string $token ): string {
+		$service_name = $this->get_keyring_service_name();
+
+		if ( 'daily_digest_clickup_oauth2' === $service_name ) {
+			return 'Bearer ' . $token;
+		}
+
+		return $token;
 	}
 
 	/**

@@ -320,10 +320,6 @@ class AdminPage {
 											</label>
 										</p>
 									<?php endforeach; ?>
-									<p>
-										<strong><?php \esc_html_e( 'Connection:', 'daily-digest' ); ?></strong>
-										<?php echo $connected ? \esc_html__( 'Connected via Keyring', 'daily-digest' ) : \esc_html__( 'Not connected', 'daily-digest' ); ?>
-									</p>
 									<?php if ( $connected ) : ?>
 										<p class="description">
 											<?php
@@ -335,24 +331,24 @@ class AdminPage {
 											<summary><?php \esc_html_e( 'View connection details', 'daily-digest' ); ?></summary>
 											<p><?php echo wp_kses_post( $this->render_connection_meta( $slug, $connection_meta ) ); ?></p>
 										</details>
-										<p>
-											<button type="button" class="button button-link-delete daily-digest-disconnect-provider" data-provider="<?php echo \esc_attr( $slug ); ?>">
-												<?php \esc_html_e( 'Disconnect', 'daily-digest' ); ?>
-											</button>
-										</p>
 									<?php endif; ?>
 									<?php if ( $service_exists && ! $service_ready ) : ?>
 										<p class="description">
 											<?php \esc_html_e( 'Keyring credentials are not configured for this provider yet.', 'daily-digest' ); ?>
 										</p>
 									<?php endif; ?>
-									<p>
-										<button type="button" class="button button-secondary daily-digest-test-credentials" data-provider="<?php echo \esc_attr( $slug ); ?>" data-keyring-configured="<?php echo $can_test_provider ? '1' : '0'; ?>" <?php echo $can_test_provider ? '' : 'disabled="disabled" aria-disabled="true"'; ?>>
+									<div class="daily-digest-provider-actions">
+										<button type="button" class="button button-secondary daily-digest-provider-action-button daily-digest-test-credentials" data-provider="<?php echo \esc_attr( $slug ); ?>" data-keyring-configured="<?php echo $can_test_provider ? '1' : '0'; ?>" <?php echo $can_test_provider ? '' : 'disabled="disabled" aria-disabled="true"'; ?>>
 											<?php \esc_html_e( 'Test Connection', 'daily-digest' ); ?>
 										</button>
-										<span class="daily-digest-test-result" id="daily-digest-test-result-<?php echo \esc_attr( $slug ); ?>" style="margin-left:8px;"></span>
-										<span class="daily-digest-save-result" id="daily-digest-save-result-<?php echo \esc_attr( $slug ); ?>" style="margin-left:8px;"></span>
-									</p>
+										<?php if ( $connected ) : ?>
+											<button type="button" class="button button-secondary daily-digest-provider-action-button daily-digest-provider-action-button-danger daily-digest-disconnect-provider" data-provider="<?php echo \esc_attr( $slug ); ?>">
+												<?php \esc_html_e( 'Disconnect', 'daily-digest' ); ?>
+											</button>
+										<?php endif; ?>
+										<span class="daily-digest-test-result" id="daily-digest-test-result-<?php echo \esc_attr( $slug ); ?>"></span>
+										<span class="daily-digest-save-result" id="daily-digest-save-result-<?php echo \esc_attr( $slug ); ?>"></span>
+									</div>
 								</td>
 							</tr>
 						<?php endforeach; ?>

@@ -145,14 +145,18 @@ export const initSettingsPage = () => {
 			const message =
 				payload && payload.message
 					? payload.message
-					: __( 'Unable to save provider settings.', 'daily-digest' );
+					: __(
+							'Unable to save provider configuration.',
+							'daily-digest'
+					  );
 			setSaveResult( provider, message, false );
 			return;
 		}
 
 		setSaveResult(
 			provider,
-			payload.message || __( 'Provider settings saved.', 'daily-digest' ),
+			payload.message ||
+				__( 'Provider configuration saved.', 'daily-digest' ),
 			true
 		);
 	};

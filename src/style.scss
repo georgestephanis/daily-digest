@@ -54,7 +54,47 @@
 		line-height: 1.4;
 	}
 
-	.daily-digest-test-credentials {
+	.daily-digest-provider-actions {
+		display: flex;
+		align-items: center;
+		column-gap: 8px;
+		row-gap: 4px;
+		flex-wrap: wrap;
+	}
+
+	.daily-digest-provider-action-button {
+		box-sizing: border-box;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		flex: 0 0 136px;
+		width: 136px;
+		min-height: 30px;
+		padding-top: 2px;
+		padding-bottom: 2px;
+		text-align: center;
+		white-space: nowrap;
+	}
+
+	.daily-digest-provider-action-button-danger {
+		color: #b32d2e;
+		border-color: #d63638;
+	}
+
+	.daily-digest-provider-action-button-danger:hover,
+	.daily-digest-provider-action-button-danger:focus {
+		color: #8a2424;
+		border-color: #b32d2e;
+	}
+
+	.daily-digest-test-result,
+	.daily-digest-save-result {
+		flex: 1 0 100%;
+		margin-left: 0;
+	}
+
+	.daily-digest-test-credentials,
+	.daily-digest-disconnect-provider {
 		min-height: 30px;
 		padding-top: 2px;
 		padding-bottom: 2px;
@@ -104,15 +144,18 @@
 			width: 100%;
 		}
 
+		.daily-digest-provider-actions {
+			align-items: center;
+		}
+
 		.daily-digest-test-credentials {
 			margin-top: 2px;
 		}
 
 		.daily-digest-test-result,
 		.daily-digest-save-result {
-			display: block;
-			margin-left: 0 !important;
-			margin-top: 4px;
+			margin-left: 0;
+			margin-top: 2px;
 		}
 	}
 }

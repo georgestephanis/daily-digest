@@ -522,7 +522,7 @@ class RestController {
 
 		$response_data = array(
 			'success'  => true,
-			'message'  => __( 'Provider credentials saved.', 'daily-digest' ),
+			'message'  => __( 'Provider configuration saved.', 'daily-digest' ),
 			'provider' => $provider_slug,
 			'enabled'  => $enabled,
 			'fields'   => array_keys( $filtered_fields ),

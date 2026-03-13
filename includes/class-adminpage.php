@@ -292,6 +292,10 @@ class AdminPage {
 							$connection_meta   = $this->keyring_connections->get_connection_meta_for_user( $slug, $current_user_id );
 							$connect_url       = $this->keyring_connections->get_connect_url( $slug );
 							$manage_url        = $this->keyring_connections->get_manage_url( $slug );
+							$configure_url     = $this->keyring_connections->get_configure_url( $slug );
+							$service_exists    = $this->keyring_connections->has_service( $slug );
+							$service_ready     = $this->keyring_connections->is_service_configured( $slug );
+							$can_test_provider = $service_exists && $service_ready;
 							?>
 							<tr data-provider="<?php echo \esc_attr( $slug ); ?>">
 								<th scope="row"><?php echo \esc_html( $provider->get_name() ); ?></th>
@@ -320,9 +324,15 @@ class AdminPage {
 									<?php endif; ?>
 									<?php if ( ! empty( $connect_url ) ) : ?>
 										<p>
-											<a class="button" href="<?php echo \esc_url( $connect_url ); ?>">
-												<?php \esc_html_e( 'Connect via Keyring', 'daily-digest' ); ?>
-											</a>
+											<?php if ( $service_exists && $service_ready ) : ?>
+												<a class="button" href="<?php echo \esc_url( $connect_url ); ?>">
+													<?php \esc_html_e( 'Connect via Keyring', 'daily-digest' ); ?>
+												</a>
+											<?php else : ?>
+												<span class="button disabled" aria-disabled="true">
+													<?php \esc_html_e( 'Connect via Keyring', 'daily-digest' ); ?>
+												</span>
+											<?php endif; ?>
 											<?php if ( ! empty( $manage_url ) ) : ?>
 												<a class="button button-secondary" href="<?php echo \esc_url( $manage_url ); ?>">
 													<?php \esc_html_e( 'Manage in Keyring', 'daily-digest' ); ?>
@@ -334,12 +344,20 @@ class AdminPage {
 												</button>
 											<?php endif; ?>
 										</p>
+										<?php if ( $service_exists && ! $service_ready ) : ?>
+											<p class="description">
+												<?php \esc_html_e( 'Keyring credentials are not configured for this provider yet.', 'daily-digest' ); ?>
+												<?php if ( ! empty( $configure_url ) ) : ?>
+													<a href="<?php echo \esc_url( $configure_url ); ?>"><?php \esc_html_e( 'Configure in Keyring', 'daily-digest' ); ?></a>
+												<?php endif; ?>
+											</p>
+										<?php endif; ?>
 									<?php endif; ?>
 									<p>
-										<button type="button" class="button button-secondary daily-digest-test-credentials" data-provider="<?php echo \esc_attr( $slug ); ?>">
+										<button type="button" class="button button-secondary daily-digest-test-credentials" data-provider="<?php echo \esc_attr( $slug ); ?>" data-keyring-configured="<?php echo $can_test_provider ? '1' : '0'; ?>" <?php echo $can_test_provider ? '' : 'disabled="disabled" aria-disabled="true"'; ?>>
 											<?php \esc_html_e( 'Test Connection', 'daily-digest' ); ?>
 										</button>
-										<button type="button" class="button button-primary daily-digest-save-credentials" data-provider="<?php echo \esc_attr( $slug ); ?>">
+										<button type="button" class="button button-primary daily-digest-save-credentials" data-provider="<?php echo \esc_attr( $slug ); ?>" data-keyring-configured="<?php echo $can_test_provider ? '1' : '0'; ?>" <?php echo $can_test_provider ? '' : 'disabled="disabled" aria-disabled="true"'; ?>>
 											<?php \esc_html_e( 'Save Provider', 'daily-digest' ); ?>
 										</button>
 										<span class="daily-digest-test-result" id="daily-digest-test-result-<?php echo \esc_attr( $slug ); ?>" style="margin-left:8px;"></span>
@@ -398,6 +416,10 @@ class AdminPage {
 
 			buttons.forEach((button) => {
 				button.addEventListener('click', async () => {
+					if (button.disabled || button.getAttribute('data-keyring-configured') !== '1') {
+						return;
+					}
+
 					const provider = button.getAttribute('data-provider') || '';
 					if (!provider) {
 						return;
@@ -433,6 +455,10 @@ class AdminPage {
 
 			saveButtons.forEach((button) => {
 				button.addEventListener('click', async () => {
+					if (button.disabled || button.getAttribute('data-keyring-configured') !== '1') {
+						return;
+					}
+
 					const provider = button.getAttribute('data-provider') || '';
 					if (!provider) {
 						return;

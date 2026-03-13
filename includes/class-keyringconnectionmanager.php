@@ -104,6 +104,77 @@ class KeyringConnectionManager {
 	}
 
 	/**
+	 * Returns URL for configuring a provider service in Keyring.
+	 *
+	 * @param string $provider_slug Provider slug.
+	 *
+	 * @return string
+	 */
+	public function get_configure_url( string $provider_slug ): string {
+		if ( ! $this->is_available() ) {
+			return '';
+		}
+
+		$service = $this->get_service_name( $provider_slug );
+		if ( '' === $service ) {
+			return '';
+		}
+
+		return (string) \Keyring_Util::admin_url(
+			$service,
+			array(
+				'action'   => 'manage',
+				'kr_nonce' => \wp_create_nonce( 'keyring-manage' ),
+				'nonce'    => \wp_create_nonce( 'keyring-manage-' . $service ),
+			)
+		);
+	}
+
+	/**
+	 * Checks whether a provider's Keyring service is available.
+	 *
+	 * @param string $provider_slug Provider slug.
+	 *
+	 * @return bool
+	 */
+	public function has_service( string $provider_slug ): bool {
+		if ( ! $this->is_available() ) {
+			return false;
+		}
+
+		$service = $this->get_service_name( $provider_slug );
+		if ( '' === $service ) {
+			return false;
+		}
+
+		$service_object = \Keyring::get_service_by_name( $service );
+
+		return \is_object( $service_object );
+	}
+
+	/**
+	 * Checks whether a provider's Keyring service is configured and ready to connect.
+	 *
+	 * @param string $provider_slug Provider slug.
+	 *
+	 * @return bool
+	 */
+	public function is_service_configured( string $provider_slug ): bool {
+		if ( ! $this->has_service( $provider_slug ) ) {
+			return false;
+		}
+
+		$service        = $this->get_service_name( $provider_slug );
+		$service_object = \Keyring::get_service_by_name( $service );
+
+		if ( ! \is_object( $service_object ) || ! \method_exists( $service_object, 'is_configured' ) ) {
+			return false;
+		}
+
+		return (bool) $service_object->is_configured();
+	}
+
+	/**
 	 * Returns first Keyring token for provider and user.
 	 *
 	 * @param string $provider_slug Provider slug.

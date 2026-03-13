@@ -15,6 +15,17 @@ if ( ! class_exists( 'Daily_Digest_Keyring_Service_Base' ) && class_exists( 'Key
 	 */
 	abstract class Daily_Digest_Keyring_Service_Base extends Keyring_Service {
 		/**
+		 * Constructor.
+		 */
+		public function __construct() {
+			parent::__construct();
+
+			if ( ! KEYRING__HEADLESS_MODE ) {
+				add_action( 'keyring_' . $this->get_name() . '_request_ui', array( $this, 'request_ui' ) );
+			}
+		}
+
+		/**
 		 * Returns provider-specific token instructions.
 		 *
 		 * @return string
@@ -32,8 +43,19 @@ if ( ! class_exists( 'Daily_Digest_Keyring_Service_Base' ) && class_exists( 'Key
 
 		/**
 		 * Starts token request flow.
+		 *
+		 * Keyring invokes this on admin_init before page rendering, so it should
+		 * not output markup directly.
 		 */
 		public function request_token() {
+			// Intentionally empty: Keyring runs this action during admin_init.
+			// Rendering is handled by request_ui() on keyring_{service}_request_ui.
+		}
+
+		/**
+		 * Renders token request UI.
+		 */
+		public function request_ui() {
 			if ( ! isset( $_REQUEST['nonce'] ) || ! wp_verify_nonce( $_REQUEST['nonce'], 'keyring-request-' . $this->get_name() ) ) {
 				Keyring::error( __( 'Invalid/missing request nonce.', 'keyring' ) );
 				exit;

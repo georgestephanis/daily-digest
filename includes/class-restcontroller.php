@@ -376,7 +376,7 @@ class RestController {
 		$providers = array();
 
 		foreach ( $this->provider_registry->all() as $slug => $provider ) {
-			$connected           = $this->keyring_connections->has_connection( (string) $slug, $user_id );
+			$connected          = $this->keyring_connections->has_connection( (string) $slug, $user_id );
 			$providers[ $slug ] = array(
 				'name'      => $provider->get_name(),
 				'connected' => $connected,

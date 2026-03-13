@@ -40,6 +40,7 @@ if ( ! class_exists( 'Daily_Digest_Keyring_Service_Base' ) && class_exists( 'Key
 			}
 
 			echo '<div class="wrap">';
+			/* translators: %s is the provider label, such as Slack or ClickUp. */
 			echo '<h2>' . esc_html( sprintf( __( 'Connect %s', 'daily-digest' ), $this->get_label() ) ) . '</h2>';
 			echo '<p><a href="' . esc_url( Keyring_Util::admin_url( false, array( 'action' => 'tokens' ) ) ) . '">' . esc_html__( '&larr; Back to Connections', 'daily-digest' ) . '</a></p>';
 			echo '<p>' . wp_kses_post( $this->get_token_help_text() ) . '</p>';
@@ -51,6 +52,7 @@ if ( ! class_exists( 'Daily_Digest_Keyring_Service_Base' ) && class_exists( 'Key
 			echo '<table class="form-table">';
 			echo '<tr><th scope="row"><label for="dd-keyring-token">' . esc_html__( 'Access Token', 'daily-digest' ) . '</label></th>';
 			echo '<td><input type="text" class="regular-text" id="dd-keyring-token" name="token" required /></td></tr>';
+			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Subclasses return trusted table row markup for this form.
 			echo $this->get_additional_fields_ui();
 			echo '</table>';
 			echo '<p class="submit">';

@@ -52,8 +52,11 @@ if ( ! class_exists( 'Daily_Digest_Keyring_Service_Slack' ) && class_exists( 'Ke
 		public function basic_ui_intro() {
 			echo '<p>' . esc_html__( 'Create a Slack app and configure OAuth credentials for Daily Digest.', 'daily-digest' ) . '</p>';
 			echo '<ol>';
+			/* translators: %s is the Slack apps URL. */
 			echo '<li>' . wp_kses_post( sprintf( __( 'Create an app at <a href="%s" target="_blank" rel="noopener noreferrer">api.slack.com/apps</a>.', 'daily-digest' ), 'https://api.slack.com/apps' ) ) . '</li>';
+			/* translators: %s is the Slack OAuth user scope. */
 			echo '<li>' . wp_kses_post( sprintf( __( 'In <strong>OAuth &amp; Permissions</strong>, add the user scope <code>%s</code>.', 'daily-digest' ), self::SCOPE ) ) . '</li>';
+			/* translators: %s is the Keyring OAuth callback URL to configure in Slack. */
 			echo '<li>' . wp_kses_post( sprintf( __( 'Add this redirect URL in Slack: <code>%s</code>.', 'daily-digest' ), esc_html( Keyring_Util::admin_url( $this->get_name(), array( 'action' => 'verify' ) ) ) ) ) . '</li>';
 			echo '<li>' . esc_html__( 'Copy Client ID to API Key and Client Secret to API Secret, then save.', 'daily-digest' ) . '</li>';
 			echo '</ol>';

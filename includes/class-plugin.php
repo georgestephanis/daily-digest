@@ -105,13 +105,13 @@ class Plugin {
 			return;
 		}
 
-		$this->provider_registry = new ProviderRegistry();
-		$this->user_settings     = new UserSettings();
-		$this->api_logger        = new ApiLogger();
+		$this->provider_registry   = new ProviderRegistry();
+		$this->user_settings       = new UserSettings();
+		$this->api_logger          = new ApiLogger();
 		$this->keyring_connections = new KeyringConnectionManager();
-		$this->digest_service    = new DigestService( $this->provider_registry, $this->user_settings );
-		$this->rest_controller   = new RestController( $this->provider_registry, $this->user_settings, $this->digest_service, $this->api_logger, $this->keyring_connections );
-		$this->admin_page        = new AdminPage( $this->provider_registry, $this->user_settings, $this->digest_service, $this->api_logger, $this->keyring_connections );
+		$this->digest_service      = new DigestService( $this->provider_registry, $this->user_settings );
+		$this->rest_controller     = new RestController( $this->provider_registry, $this->user_settings, $this->digest_service, $this->api_logger, $this->keyring_connections );
+		$this->admin_page          = new AdminPage( $this->provider_registry, $this->user_settings, $this->digest_service, $this->api_logger, $this->keyring_connections );
 
 		$this->register_keyring_scope_filters();
 		$this->register_keyring_services();
@@ -179,7 +179,10 @@ class Plugin {
 
 		$current_scopes = array();
 		if ( '' !== trim( $scope ) ) {
-			$current_scopes = preg_split( '/\s+/', trim( $scope ) ) ?: array();
+			$parsed_scopes = preg_split( '/\s+/', trim( $scope ) );
+			if ( is_array( $parsed_scopes ) ) {
+				$current_scopes = $parsed_scopes;
+			}
 		}
 
 		$normalized_required = array_map( 'strval', $required_scopes );

@@ -56,7 +56,9 @@ if ( ! class_exists( 'Daily_Digest_Keyring_Service_Clickup' ) && class_exists( '
 		public function basic_ui_intro() {
 			echo '<p>' . esc_html__( 'Create a ClickUp OAuth app and configure credentials for Daily Digest.', 'daily-digest' ) . '</p>';
 			echo '<ol>';
+			/* translators: %s is the ClickUp OAuth documentation URL. */
 			echo '<li>' . wp_kses_post( sprintf( __( 'Create an app in ClickUp settings using <a href="%s" target="_blank" rel="noopener noreferrer">ClickUp OAuth docs</a>.', 'daily-digest' ), 'https://developer.clickup.com/docs/authentication#oauth-flow' ) ) . '</li>';
+			/* translators: %s is the Keyring OAuth callback URL to configure in ClickUp. */
 			echo '<li>' . wp_kses_post( sprintf( __( 'Set this Redirect URL in ClickUp: <code>%s</code>.', 'daily-digest' ), esc_html( Keyring_Util::admin_url( $this->get_name(), array( 'action' => 'verify' ) ) ) ) ) . '</li>';
 			echo '<li>' . esc_html__( 'Copy Client ID to API Key and Client Secret to API Secret, then save.', 'daily-digest' ) . '</li>';
 			echo '</ol>';

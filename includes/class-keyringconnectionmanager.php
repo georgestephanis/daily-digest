@@ -52,11 +52,11 @@ class KeyringConnectionManager {
 	 * Returns URL for connecting a provider via Keyring.
 	 *
 	 * @param string $provider_slug Provider slug.
-	 * @param string $for           Context string for connection flow.
+	 * @param string $context       Context string for connection flow.
 	 *
 	 * @return string
 	 */
-	public function get_connect_url( string $provider_slug, string $for = 'daily-digest-settings' ): string {
+	public function get_connect_url( string $provider_slug, string $context = 'daily-digest-settings' ): string {
 		if ( ! $this->is_available() ) {
 			return '';
 		}
@@ -72,7 +72,7 @@ class KeyringConnectionManager {
 				'action'   => 'request',
 				'kr_nonce' => \wp_create_nonce( 'keyring-request' ),
 				'nonce'    => \wp_create_nonce( 'keyring-request-' . $service ),
-				'for'      => $for,
+				'for'      => $context,
 			)
 		);
 	}

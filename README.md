@@ -41,8 +41,9 @@ Daily Digest is a WordPress plugin that aggregates per-user activity from multip
 ### Slack
 
 - Create/Manage App: https://api.slack.com/apps
-- OAuth v2: https://api.slack.com/authentication/oauth-v2
-- User Lookup: https://api.slack.com/methods/users.lookupByEmail
+- Installing with OAuth: https://docs.slack.dev/authentication/installing-with-oauth
+- `search:read` scope reference: https://docs.slack.dev/reference/scopes/search.read
+- `auth.test` method reference: https://docs.slack.dev/reference/methods/auth.test
 
 ### Connection Metadata
 
@@ -54,25 +55,21 @@ Connection context such as Slack user/team or ClickUp team IDs is discovered fro
 
 1. Go to https://api.slack.com/apps and click **Create New App**.
 2. Choose your workspace.
-3. In **OAuth & Permissions**, add Bot Token Scopes:
-   - `channels:read`
-   - `groups:read`
-   - `channels:history`
-   - `groups:history`
-4. Install (or reinstall) the app to the workspace.
-5. Copy a **User OAuth Token** (`xoxp-...`) with `search:read` scope.
-6. Obtain the target Slack User ID:
-   - via `users.lookupByEmail` (API method), or
-   - from the Slack profile menu in the app/client.
+3. In **OAuth & Permissions**, add the **User Token Scope** `search:read`.
+4. In **OAuth & Permissions**, add this Redirect URL from Keyring Slack manage screen:
+   - `Tools → Keyring → Daily Digest Slack → Manage`
+5. In **Keyring → Daily Digest Slack → Manage**, paste:
+   - **Client ID** into API Key
+   - **Client Secret** into API Secret
+6. Save credentials in Keyring.
 7. In WordPress, open **Daily Digest → Settings** and click **Connect via Keyring** for Slack.
-8. Run **Test Connection**.
+8. Complete Slack authorization and run **Test Connection**.
 
 ### Common Slack Auth Issues
 
-- Using a bot token (`xoxb-`) instead of a user token (`xoxp-`) for search APIs.
-- Missing history/read scopes on the Slack app.
-- App not installed (or not reinstalled after scope changes).
-- Slack User ID is an email/username instead of an actual user ID.
+- Missing `search:read` user scope on the Slack app.
+- Redirect URL mismatch (`bad_redirect_uri`) between Slack app settings and Keyring callback URL.
+- Existing connection was authorized before scope updates; reconnect to apply new scopes.
 
 ## Development
 

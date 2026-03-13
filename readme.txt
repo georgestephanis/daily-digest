@@ -58,8 +58,9 @@ Use the official provider docs for token/auth setup:
   * Personal token setup: https://help.clickup.com/hc/en-us/articles/6303426241687-Use-the-ClickUp-API
 * Slack
   * Create/manage app: https://api.slack.com/apps
-  * OAuth v2 and token scopes: https://api.slack.com/authentication/oauth-v2
-  * User lookup method (for User ID): https://api.slack.com/methods/users.lookupByEmail
+  * Installing with OAuth: https://docs.slack.dev/authentication/installing-with-oauth
+  * search:read scope reference: https://docs.slack.dev/reference/scopes/search.read
+  * auth.test method reference: https://docs.slack.dev/reference/methods/auth.test
 
 Daily Digest stores provider tokens and connection context in Keyring metadata.
 
@@ -68,11 +69,10 @@ Connection context (for example Slack user/team and ClickUp team IDs) is discove
 Slack setup steps:
 
 1. Create a Slack app at https://api.slack.com/apps.
-2. In OAuth & Permissions, ensure you can issue a user token with search:read scope.
-3. Install or reinstall the app to your workspace.
-4. Copy a User OAuth Token (xoxp-...).
-5. Find the Slack User ID (users.lookupByEmail or profile tools).
-6. Use Connect via Keyring in Daily Digest > Settings and run Test Connection.
+2. In OAuth & Permissions, add the user token scope search:read.
+3. Add the Keyring callback URL shown in Tools > Keyring > Daily Digest Slack > Manage as a Redirect URL.
+4. In Keyring manage screen for Daily Digest Slack, enter Client ID (API Key) and Client Secret (API Secret), then save.
+5. Use Connect via Keyring in Daily Digest > Settings, complete Slack authorization, and run Test Connection.
 
 == Extending ==
 

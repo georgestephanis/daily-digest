@@ -76,7 +76,7 @@ class SlackProvider implements ProviderInterface {
 		if ( empty( $token ) ) {
 			return array(
 				'success' => false,
-				'message' => __( 'Connect Slack via Keyring first. Use a user token (xoxp-...) with search:read scope.', 'daily-digest' ),
+				'message' => __( 'Connect Slack via Keyring first using OAuth. The Slack app must request the search:read user scope.', 'daily-digest' ),
 			);
 		}
 

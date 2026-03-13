@@ -113,6 +113,7 @@ class Plugin {
 		$this->rest_controller   = new RestController( $this->provider_registry, $this->user_settings, $this->digest_service, $this->api_logger, $this->keyring_connections );
 		$this->admin_page        = new AdminPage( $this->provider_registry, $this->user_settings, $this->digest_service, $this->api_logger, $this->keyring_connections );
 
+		$this->register_keyring_scope_filters();
 		$this->register_keyring_services();
 		$this->register_builtin_providers();
 		/**
@@ -148,5 +149,43 @@ class Plugin {
 		}
 
 		require_once DAILY_DIGEST_PLUGIN_PATH . 'includes/keyring-services.php';
+	}
+
+	/**
+	 * Registers Keyring OAuth scope filters used by Daily Digest.
+	 */
+	private function register_keyring_scope_filters(): void {
+		\add_filter( 'keyring_github_scope', array( $this, 'filter_github_scope' ) );
+	}
+
+	/**
+	 * Ensures Daily Digest requests the OAuth scopes it needs for GitHub.
+	 *
+	 * @param string $scope Existing Keyring scope string.
+	 *
+	 * @return string
+	 */
+	public function filter_github_scope( string $scope ): string {
+		$required_scopes = array( 'notifications' );
+
+		/**
+		 * Filters required GitHub OAuth scopes for Daily Digest.
+		 *
+		 * @since 0.1.0
+		 *
+		 * @param array<string> $required_scopes Required scope list.
+		 */
+		$required_scopes = \apply_filters( 'daily_digest_github_oauth_scopes', $required_scopes );
+
+		$current_scopes = array();
+		if ( '' !== trim( $scope ) ) {
+			$current_scopes = preg_split( '/\s+/', trim( $scope ) ) ?: array();
+		}
+
+		$normalized_required = array_map( 'strval', $required_scopes );
+		$all_scopes          = array_unique( array_merge( $current_scopes, $normalized_required ) );
+		$all_scopes          = array_values( array_filter( $all_scopes, 'strlen' ) );
+
+		return implode( ' ', $all_scopes );
 	}
 }

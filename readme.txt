@@ -54,14 +54,16 @@ Use the official provider docs for token/auth setup:
   * OAuth apps overview: https://docs.github.com/en/apps/oauth-apps
   * OAuth app authorization: https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps
 * ClickUp
-  * API auth: https://developer.clickup.com/docs/authentication
-  * Personal token setup: https://help.clickup.com/hc/en-us/articles/6303426241687-Use-the-ClickUp-API
+  * Authentication: https://developer.clickup.com/docs/authentication
+  * OAuth getting started: https://developer.clickup.com/docs/Getting%20Started
+  * OAuth token endpoint: https://developer.clickup.com/reference/getaccesstoken
 
-ClickUp service availability is controlled in Keyring:
+ClickUp uses OAuth in Keyring:
 
-1. Open Tools > Keyring > Add New Connection.
-2. If ClickUp appears under services requiring configuration, click Manage and enable it.
-3. Then connect ClickUp and paste your personal API token when prompted.
+1. Create a ClickUp OAuth app and copy client_id and secret.
+2. In Tools > Keyring > Daily Digest ClickUp > Manage, set API Key = client_id and API Secret = secret.
+3. Add the callback URL from that Keyring manage screen as a Redirect URL in ClickUp app settings.
+4. Connect ClickUp via Keyring and complete authorization.
 * Slack
   * Create/manage app: https://api.slack.com/apps
   * Installing with OAuth: https://docs.slack.dev/authentication/installing-with-oauth

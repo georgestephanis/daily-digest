@@ -35,14 +35,16 @@ Daily Digest is a WordPress plugin that aggregates per-user activity from multip
 
 ### ClickUp
 
-- API Authentication: https://developer.clickup.com/docs/authentication
-- Personal Token Setup: https://help.clickup.com/hc/en-us/articles/6303426241687-Use-the-ClickUp-API
+- Authentication: https://developer.clickup.com/docs/authentication
+- OAuth Getting Started: https://developer.clickup.com/docs/Getting%20Started
+- OAuth Token Endpoint: https://developer.clickup.com/reference/getaccesstoken
 
-ClickUp service availability is controlled in Keyring:
+ClickUp uses OAuth in Keyring:
 
-1. Open **Tools -> Keyring -> Add New Connection**.
-2. If ClickUp appears under services requiring configuration, click **Manage** and enable it.
-3. Then connect ClickUp and paste your personal API token when prompted.
+1. Create a ClickUp OAuth app and copy **client_id** and **secret**.
+2. In **Tools -> Keyring -> Daily Digest ClickUp -> Manage**, set API Key = client_id and API Secret = secret.
+3. In the ClickUp app settings, add the Keyring callback URL shown in that Manage screen as Redirect URL.
+4. Connect ClickUp via Keyring and complete the OAuth authorization.
 
 ### Slack
 

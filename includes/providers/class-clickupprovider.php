@@ -85,7 +85,7 @@ class ClickupProvider implements ProviderInterface {
 			array(
 				'timeout' => 15,
 				'headers' => array(
-					'Authorization' => $token,
+					'Authorization' => 'Bearer ' . $token,
 				),
 			)
 		);
@@ -196,7 +196,7 @@ class ClickupProvider implements ProviderInterface {
 					array(
 						'timeout' => 15,
 						'headers' => array(
-							'Authorization' => $token,
+							'Authorization' => 'Bearer ' . $token,
 						),
 					)
 				);
@@ -276,7 +276,7 @@ class ClickupProvider implements ProviderInterface {
 			array(
 				'timeout' => 15,
 				'headers' => array(
-					'Authorization' => $token,
+					'Authorization' => 'Bearer ' . $token,
 				),
 			)
 		);

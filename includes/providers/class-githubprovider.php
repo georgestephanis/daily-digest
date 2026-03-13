@@ -74,11 +74,6 @@ class GithubProvider implements ProviderInterface {
 	 */
 	public function test_credentials( array $provider_fields ): array {
 		$token    = $this->keyring_connections->get_access_token_string( 'github', \get_current_user_id() );
-
-		// Backward compatibility for users who still have legacy token fields saved.
-		if ( empty( $token ) ) {
-			$token = isset( $provider_fields['token'] ) ? \trim( (string) $provider_fields['token'] ) : '';
-		}
 		$username = isset( $provider_fields['username'] ) ? \trim( (string) $provider_fields['username'] ) : '';
 
 		if ( empty( $token ) ) {
@@ -181,10 +176,6 @@ class GithubProvider implements ProviderInterface {
 	 */
 	private function fetch_notifications( int $user_id, array $fields, array $options ): array {
 		$token = $this->keyring_connections->get_access_token_string( 'github', $user_id );
-
-		if ( empty( $token ) ) {
-			$token = isset( $fields['token'] ) ? \trim( (string) $fields['token'] ) : '';
-		}
 
 		if ( empty( $token ) ) {
 			return array();

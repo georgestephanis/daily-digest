@@ -25,13 +25,6 @@ class UserSettings {
 	private string $meta_key = 'daily_digest_provider_settings';
 
 	/**
-	 * Legacy user meta key used in older plugin versions.
-	 *
-	 * @var string
-	 */
-	private string $legacy_meta_key = 'dd_provider_settings';
-
-	/**
 	 * Retrieves provider settings for a user.
 	 *
 	 * @param int $user_id User ID.
@@ -40,10 +33,6 @@ class UserSettings {
 	 */
 	public function get_for_user( int $user_id ): array {
 		$settings = \get_user_meta( $user_id, $this->meta_key, true );
-
-		if ( ! \is_array( $settings ) ) {
-			$settings = \get_user_meta( $user_id, $this->legacy_meta_key, true );
-		}
 
 		if ( ! \is_array( $settings ) ) {
 			return array();
@@ -82,6 +71,5 @@ class UserSettings {
 		}
 
 		\update_user_meta( $user_id, $this->meta_key, $sanitized );
-		\delete_user_meta( $user_id, $this->legacy_meta_key );
 	}
 }

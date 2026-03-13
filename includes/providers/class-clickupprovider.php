@@ -76,10 +76,6 @@ class ClickupProvider implements ProviderInterface {
 		$token = $this->keyring_connections->get_access_token_string( 'clickup', \get_current_user_id() );
 
 		if ( empty( $token ) ) {
-			$token = isset( $provider_fields['token'] ) ? \trim( (string) $provider_fields['token'] ) : '';
-		}
-
-		if ( empty( $token ) ) {
 			return array(
 				'success' => false,
 				'message' => __( 'Connect ClickUp via Keyring first.', 'daily-digest' ),
@@ -168,10 +164,6 @@ class ClickupProvider implements ProviderInterface {
 	private function fetch_tasks( int $user_id, array $fields, array $options ): array {
 		$workspace_id = isset( $fields['workspace_id'] ) ? \trim( (string) $fields['workspace_id'] ) : '';
 		$token        = $this->keyring_connections->get_access_token_string( 'clickup', $user_id );
-
-		if ( empty( $token ) ) {
-			$token = isset( $fields['token'] ) ? \trim( (string) $fields['token'] ) : '';
-		}
 
 		if ( empty( $workspace_id ) || empty( $token ) ) {
 			return array();

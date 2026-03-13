@@ -77,12 +77,6 @@ class SlackProvider implements ProviderInterface {
 		$token = $this->keyring_connections->get_access_token_string( 'slack', \get_current_user_id() );
 
 		if ( empty( $token ) ) {
-			$user_token = isset( $provider_fields['user_token'] ) ? \trim( (string) $provider_fields['user_token'] ) : '';
-			$bot_token  = isset( $provider_fields['bot_token'] ) ? \trim( (string) $provider_fields['bot_token'] ) : '';
-			$token      = ! empty( $user_token ) ? $user_token : $bot_token;
-		}
-
-		if ( empty( $token ) ) {
 			return array(
 				'success' => false,
 				'message' => __( 'Connect Slack via Keyring first. Use a user token (xoxp-...) with search:read scope.', 'daily-digest' ),
@@ -188,12 +182,6 @@ class SlackProvider implements ProviderInterface {
 		$workspace  = isset( $fields['workspace'] ) ? \trim( (string) $fields['workspace'] ) : '';
 		$slack_user = isset( $fields['user_id'] ) ? \trim( (string) $fields['user_id'] ) : '';
 		$token      = $this->keyring_connections->get_access_token_string( 'slack', $user_id );
-
-		if ( empty( $token ) ) {
-			$user_token = isset( $fields['user_token'] ) ? \trim( (string) $fields['user_token'] ) : '';
-			$bot_token  = isset( $fields['bot_token'] ) ? \trim( (string) $fields['bot_token'] ) : '';
-			$token      = ! empty( $user_token ) ? $user_token : $bot_token;
-		}
 
 		if ( empty( $slack_user ) || empty( $token ) ) {
 			return array();

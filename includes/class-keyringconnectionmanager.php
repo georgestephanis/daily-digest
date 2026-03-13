@@ -182,15 +182,7 @@ class KeyringConnectionManager {
 		}
 
 		$raw_token = $token->token;
-		if ( \is_string( $raw_token ) ) {
-			return \trim( $raw_token );
-		}
-
-		if ( \is_array( $raw_token ) && isset( $raw_token['access_token'] ) ) {
-			return \trim( (string) $raw_token['access_token'] );
-		}
-
-		return '';
+		return \is_string( $raw_token ) ? \trim( $raw_token ) : '';
 	}
 
 	/**

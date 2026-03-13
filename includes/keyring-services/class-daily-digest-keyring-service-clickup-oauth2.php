@@ -219,5 +219,26 @@ if ( ! class_exists( 'Daily_Digest_Keyring_Service_Clickup_OAuth2' ) && class_ex
 
 			return $this->get_label();
 		}
+
+		/**
+		 * Tests whether the current connection token is valid.
+		 *
+		 * @return bool|mixed True on success, or response/error details on failure.
+		 */
+		public function test_connection() {
+			$response = $this->request( $this->self_url, array( 'method' => $this->self_method ) );
+
+			if ( Keyring_Util::is_error( $response ) ) {
+				return $response;
+			}
+
+			if ( ! is_object( $response ) || empty( $response->user ) ) {
+				return array(
+					'message' => __( 'ClickUp test request did not return a valid user payload.', 'daily-digest' ),
+				);
+			}
+
+			return true;
+		}
 	}
 }

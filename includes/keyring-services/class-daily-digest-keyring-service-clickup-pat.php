@@ -183,5 +183,27 @@ if ( ! class_exists( 'Daily_Digest_Keyring_Service_Clickup_PAT' ) && class_exist
 				),
 			);
 		}
+
+		/**
+		 * Tests whether the current personal token is valid.
+		 *
+		 * @return bool|mixed True on success, or response/error details on failure.
+		 */
+		public function test_connection() {
+			if ( empty( $this->token ) ) {
+				return array(
+					'message' => __( 'No ClickUp token is set for testing.', 'daily-digest' ),
+				);
+			}
+
+			$verification = $this->verify_access_token( (string) $this->token );
+			if ( ! empty( $verification['success'] ) ) {
+				return true;
+			}
+
+			return array(
+				'message' => isset( $verification['message'] ) ? (string) $verification['message'] : __( 'ClickUp token verification failed.', 'daily-digest' ),
+			);
+		}
 	}
 }

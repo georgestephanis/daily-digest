@@ -190,5 +190,26 @@ if ( ! class_exists( 'Daily_Digest_Keyring_Service_Slack' ) && class_exists( 'Ke
 
 			return $this->get_label();
 		}
+
+		/**
+		 * Tests whether the current connection token is valid.
+		 *
+		 * @return bool|mixed True on success, or response/error details on failure.
+		 */
+		public function test_connection() {
+			$response = $this->request( $this->self_url, array( 'method' => $this->self_method ) );
+
+			if ( Keyring_Util::is_error( $response ) ) {
+				return $response;
+			}
+
+			if ( ! is_object( $response ) || empty( $response->ok ) ) {
+				return array(
+					'message' => __( 'Slack test request did not return an OK response.', 'daily-digest' ),
+				);
+			}
+
+			return true;
+		}
 	}
 }

@@ -594,7 +594,7 @@ class AdminPage {
 		$priority_keys = array(
 			'github'  => array( 'name', 'username', 'profile_url' ),
 			'clickup' => array( 'name', 'username', 'team_names', 'user_id' ),
-			'slack'   => array( 'name', 'team', 'team_domain', 'user_id' ),
+			'slack'   => array( 'user', 'name', 'team', 'team_domain', 'user_id' ),
 		);
 
 		$keys = $priority_keys[ $provider_slug ] ?? array( 'name', 'username', 'user_id' );
@@ -635,8 +635,8 @@ class AdminPage {
 				'default_team_id' => __( 'Default Team ID', 'daily-digest' ),
 			),
 			'slack'   => array(
-				'name'        => __( 'Display Name', 'daily-digest' ),
-				'team'        => __( 'Team', 'daily-digest' ),
+				'user'        => __( 'Account', 'daily-digest' ),
+				'team'        => __( 'Workspace', 'daily-digest' ),
 				'team_domain' => __( 'Team Domain', 'daily-digest' ),
 				'user_id'     => __( 'User ID', 'daily-digest' ),
 				'team_url'    => __( 'Team URL', 'daily-digest' ),

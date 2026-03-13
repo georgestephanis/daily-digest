@@ -153,10 +153,10 @@ if ( ! class_exists( 'Daily_Digest_Keyring_Service_Slack' ) && class_exists( 'Ke
 			}
 
 			$name = '';
-			if ( ! empty( $response->team ) ) {
-				$name = (string) $response->team;
-			} elseif ( ! empty( $response->user ) ) {
+			if ( ! empty( $response->user ) ) {
 				$name = (string) $response->user;
+			} elseif ( ! empty( $response->team ) ) {
+				$name = (string) $response->team;
 			}
 
 			return array(
@@ -178,6 +178,11 @@ if ( ! class_exists( 'Daily_Digest_Keyring_Service_Slack' ) && class_exists( 'Ke
 		 * @return string
 		 */
 		public function get_display( Keyring_Access_Token $token ) {
+			$user = $token->get_meta( 'user' );
+			if ( ! empty( $user ) ) {
+				return (string) $user;
+			}
+
 			$name = $token->get_meta( 'name' );
 			if ( ! empty( $name ) ) {
 				return (string) $name;

@@ -365,14 +365,46 @@ class AdminPage {
 			const restNonce = <?php echo \wp_json_encode( $nonce ); ?>;
 			const buttons = document.querySelectorAll('.daily-digest-test-credentials');
 			const providerToggles = document.querySelectorAll('.daily-digest-provider-toggle');
+			const messageTimers = new WeakMap();
 
-			const setResult = (provider, text, ok) => {
-				const el = document.getElementById(`daily-digest-test-result-${provider}`);
+			const replaceMessage = (el, text, ok) => {
 				if (!el) {
 					return;
 				}
-				el.textContent = text;
-				el.style.color = ok ? '#0a7d18' : '#b32d2e';
+
+				const existingTimer = messageTimers.get(el);
+				if (existingTimer) {
+					clearTimeout(existingTimer);
+					messageTimers.delete(el);
+				}
+
+				const applyNewMessage = () => {
+					el.textContent = text;
+					el.style.color = ok ? '#0a7d18' : '#b32d2e';
+					el.style.transition = 'opacity 140ms ease';
+					el.style.opacity = '0';
+					window.requestAnimationFrame(() => {
+						el.style.opacity = '1';
+					});
+				};
+
+				if ((el.textContent || '').trim() !== '') {
+					el.style.transition = 'opacity 110ms ease';
+					el.style.opacity = '0';
+					const timer = window.setTimeout(() => {
+						applyNewMessage();
+						messageTimers.delete(el);
+					}, 120);
+					messageTimers.set(el, timer);
+					return;
+				}
+
+				applyNewMessage();
+			};
+
+			const setResult = (provider, text, ok) => {
+				const el = document.getElementById(`daily-digest-test-result-${provider}`);
+				replaceMessage(el, text, ok);
 			};
 
 			const collectProviderFields = (provider) => {
@@ -393,11 +425,7 @@ class AdminPage {
 
 			const setSaveResult = (provider, text, ok) => {
 				const el = document.getElementById(`daily-digest-save-result-${provider}`);
-				if (!el) {
-					return;
-				}
-				el.textContent = text;
-				el.style.color = ok ? '#0a7d18' : '#b32d2e';
+				replaceMessage(el, text, ok);
 			};
 
 			const saveProviderState = async (provider) => {

@@ -159,6 +159,7 @@ class ClickupProvider extends AbstractProvider {
 		$since_millis   = false !== $since_unix ? (int) $since_unix * 1000 : 0;
 		$activity_items = array();
 		$max_pages      = 5;
+		$identity       = $this->build_user_identity_context( $user_id );
 
 		foreach ( $team_ids as $team_id ) {
 			$current_page = 0;
@@ -202,6 +203,10 @@ class ClickupProvider extends AbstractProvider {
 
 				foreach ( $tasks as $task ) {
 					if ( ! \is_array( $task ) ) {
+						continue;
+					}
+
+					if ( ! $this->is_task_relevant_to_user( $task, $identity ) ) {
 						continue;
 					}
 
@@ -283,6 +288,131 @@ class ClickupProvider extends AbstractProvider {
 		}
 
 		return $resolved;
+	}
+
+	/**
+	 * Builds a lightweight identity context for relevance filtering.
+	 *
+	 * @param int $user_id WordPress user ID.
+	 *
+	 * @return array<string, string>
+	 */
+	private function build_user_identity_context( int $user_id ): array {
+		$clickup_user_id = $this->get_token_meta( $user_id, 'user_id' );
+		$username        = $this->get_token_meta( $user_id, 'username' );
+		$name            = $this->get_token_meta( $user_id, 'name' );
+
+		$context = array(
+			'user_id'  => \is_scalar( $clickup_user_id ) ? \trim( (string) $clickup_user_id ) : '',
+			'username' => \is_scalar( $username ) ? \trim( (string) $username ) : '',
+			'name'     => \is_scalar( $name ) ? \trim( (string) $name ) : '',
+		);
+
+		if ( '' === $context['name'] && '' !== $context['username'] ) {
+			$context['name'] = $context['username'];
+		}
+
+		if ( '' === $context['username'] && '' !== $context['name'] ) {
+			$context['username'] = $context['name'];
+		}
+
+		return $context;
+	}
+
+	/**
+	 * Determines whether a task payload is relevant to the connected user.
+	 *
+	 * @param array                $task     ClickUp task payload.
+	 * @param array<string, string> $identity Identity context.
+	 *
+	 * @return bool
+	 */
+	private function is_task_relevant_to_user( array $task, array $identity ): bool {
+		$user_id  = isset( $identity['user_id'] ) ? \trim( (string) $identity['user_id'] ) : '';
+		$username = isset( $identity['username'] ) ? \trim( (string) $identity['username'] ) : '';
+		$name     = isset( $identity['name'] ) ? \trim( (string) $identity['name'] ) : '';
+
+		if ( '' === $user_id && '' === $username && '' === $name ) {
+			return true;
+		}
+
+		if ( ! empty( $task['assignees'] ) && \is_array( $task['assignees'] ) ) {
+			foreach ( $task['assignees'] as $assignee ) {
+				if ( ! \is_array( $assignee ) || empty( $assignee['id'] ) ) {
+					continue;
+				}
+
+				if ( '' !== $user_id && (string) $assignee['id'] === $user_id ) {
+					return true;
+				}
+			}
+		}
+
+		if ( ! empty( $task['watchers'] ) && \is_array( $task['watchers'] ) ) {
+			foreach ( $task['watchers'] as $watcher ) {
+				if ( ! \is_array( $watcher ) || empty( $watcher['id'] ) ) {
+					continue;
+				}
+
+				if ( '' !== $user_id && (string) $watcher['id'] === $user_id ) {
+					return true;
+				}
+			}
+		}
+
+		if ( ! empty( $task['mentions'] ) && \is_array( $task['mentions'] ) ) {
+			foreach ( $task['mentions'] as $mention ) {
+				if ( ! \is_array( $mention ) ) {
+					continue;
+				}
+
+				$mention_id       = isset( $mention['id'] ) ? \trim( (string) $mention['id'] ) : '';
+				$mention_username = isset( $mention['username'] ) ? \trim( (string) $mention['username'] ) : '';
+
+				if ( '' !== $user_id && '' !== $mention_id && $mention_id === $user_id ) {
+					return true;
+				}
+
+				if ( '' !== $username && '' !== $mention_username && 0 === \strcasecmp( $mention_username, $username ) ) {
+					return true;
+				}
+			}
+		}
+
+		if ( ! empty( $task['comment'] ) && \is_array( $task['comment'] ) ) {
+			$comment = $task['comment'];
+
+			if ( ! empty( $comment['assignee']['id'] ) && '' !== $user_id && (string) $comment['assignee']['id'] === $user_id ) {
+				return true;
+			}
+
+			if ( ! empty( $comment['assigned_to']['id'] ) && '' !== $user_id && (string) $comment['assigned_to']['id'] === $user_id ) {
+				return true;
+			}
+		}
+
+		$haystack_parts = array();
+		foreach ( array( 'name', 'text_content', 'description' ) as $field_key ) {
+			if ( ! empty( $task[ $field_key ] ) && \is_scalar( $task[ $field_key ] ) ) {
+				$haystack_parts[] = (string) $task[ $field_key ];
+			}
+		}
+
+		if ( ! empty( $task['comment']['comment_text'] ) && \is_scalar( $task['comment']['comment_text'] ) ) {
+			$haystack_parts[] = (string) $task['comment']['comment_text'];
+		}
+
+		$haystack = \strtolower( \implode( ' ', $haystack_parts ) );
+
+		if ( '' !== $username && ( false !== \strpos( $haystack, \strtolower( '@' . $username ) ) || false !== \strpos( $haystack, \strtolower( $username ) ) ) ) {
+			return true;
+		}
+
+		if ( '' !== $name && false !== \strpos( $haystack, \strtolower( $name ) ) ) {
+			return true;
+		}
+
+		return false;
 	}
 
 	/**

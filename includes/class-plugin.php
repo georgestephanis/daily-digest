@@ -78,6 +78,13 @@ class Plugin {
 	private RestController $rest_controller;
 
 	/**
+	 * Keyring connection manager.
+	 *
+	 * @var KeyringConnectionManager
+	 */
+	private KeyringConnectionManager $keyring_connections;
+
+	/**
 	 * Returns singleton instance.
 	 *
 	 * @return Plugin
@@ -101,10 +108,12 @@ class Plugin {
 		$this->provider_registry = new ProviderRegistry();
 		$this->user_settings     = new UserSettings();
 		$this->api_logger        = new ApiLogger();
+		$this->keyring_connections = new KeyringConnectionManager();
 		$this->digest_service    = new DigestService( $this->provider_registry, $this->user_settings );
-		$this->rest_controller   = new RestController( $this->provider_registry, $this->user_settings, $this->digest_service, $this->api_logger );
-		$this->admin_page        = new AdminPage( $this->provider_registry, $this->user_settings, $this->digest_service, $this->api_logger );
+		$this->rest_controller   = new RestController( $this->provider_registry, $this->user_settings, $this->digest_service, $this->api_logger, $this->keyring_connections );
+		$this->admin_page        = new AdminPage( $this->provider_registry, $this->user_settings, $this->digest_service, $this->api_logger, $this->keyring_connections );
 
+		$this->register_keyring_services();
 		$this->register_builtin_providers();
 		/**
 		 * Registers external Daily Digest providers.
@@ -125,8 +134,19 @@ class Plugin {
 	 * Registers built-in provider adapters.
 	 */
 	private function register_builtin_providers(): void {
-		$this->provider_registry->register( new GithubProvider() );
-		$this->provider_registry->register( new ClickupProvider() );
-		$this->provider_registry->register( new SlackProvider() );
+		$this->provider_registry->register( new GithubProvider( $this->keyring_connections ) );
+		$this->provider_registry->register( new ClickupProvider( $this->keyring_connections ) );
+		$this->provider_registry->register( new SlackProvider( $this->keyring_connections ) );
+	}
+
+	/**
+	 * Loads custom Keyring services for Daily Digest providers.
+	 */
+	private function register_keyring_services(): void {
+		if ( ! \class_exists( '\\Keyring' ) ) {
+			return;
+		}
+
+		require_once DAILY_DIGEST_PLUGIN_PATH . 'includes/keyring-services.php';
 	}
 }

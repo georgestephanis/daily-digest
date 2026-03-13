@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace DailyDigest\Providers;
 
 use DailyDigest\Contracts\ProviderInterface;
+use DailyDigest\KeyringConnectionManager;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -19,6 +20,22 @@ if ( ! defined( 'ABSPATH' ) ) {
  * GitHub provider adapter.
  */
 class GithubProvider implements ProviderInterface {
+	/**
+	 * Keyring connection manager.
+	 *
+	 * @var KeyringConnectionManager
+	 */
+	private KeyringConnectionManager $keyring_connections;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param KeyringConnectionManager|null $keyring_connections Keyring connection manager.
+	 */
+	public function __construct( ?KeyringConnectionManager $keyring_connections = null ) {
+		$this->keyring_connections = $keyring_connections ?? new KeyringConnectionManager();
+	}
+
 	/**
 	 * Returns provider slug.
 	 *
@@ -45,7 +62,6 @@ class GithubProvider implements ProviderInterface {
 	public function get_fields(): array {
 		return array(
 			'username' => \__( 'GitHub Username', 'daily-digest' ),
-			'token'    => \__( 'Personal Access Token', 'daily-digest' ),
 		);
 	}
 
@@ -57,13 +73,18 @@ class GithubProvider implements ProviderInterface {
 	 * @return array{success:bool,message:string,details?:array}
 	 */
 	public function test_credentials( array $provider_fields ): array {
-		$token    = isset( $provider_fields['token'] ) ? \trim( (string) $provider_fields['token'] ) : '';
+		$token    = $this->keyring_connections->get_access_token_string( 'github', \get_current_user_id() );
+
+		// Backward compatibility for users who still have legacy token fields saved.
+		if ( empty( $token ) ) {
+			$token = isset( $provider_fields['token'] ) ? \trim( (string) $provider_fields['token'] ) : '';
+		}
 		$username = isset( $provider_fields['username'] ) ? \trim( (string) $provider_fields['username'] ) : '';
 
 		if ( empty( $token ) ) {
 			return array(
 				'success' => false,
-				'message' => __( 'GitHub token is required.', 'daily-digest' ),
+				'message' => __( 'Connect GitHub via Keyring first.', 'daily-digest' ),
 			);
 		}
 
@@ -128,7 +149,7 @@ class GithubProvider implements ProviderInterface {
 	 */
 	public function fetch_activity( int $user_id, array $provider_settings = array(), array $options = array() ): array {
 		$fields = $provider_settings['fields'] ?? array();
-		$items  = $this->fetch_notifications( $fields, $options );
+		$items  = $this->fetch_notifications( $user_id, $fields, $options );
 
 		/**
 		 * Filters GitHub provider activity items.
@@ -158,8 +179,12 @@ class GithubProvider implements ProviderInterface {
 	 *
 	 * @return array
 	 */
-	private function fetch_notifications( array $fields, array $options ): array {
-		$token = isset( $fields['token'] ) ? \trim( (string) $fields['token'] ) : '';
+	private function fetch_notifications( int $user_id, array $fields, array $options ): array {
+		$token = $this->keyring_connections->get_access_token_string( 'github', $user_id );
+
+		if ( empty( $token ) ) {
+			$token = isset( $fields['token'] ) ? \trim( (string) $fields['token'] ) : '';
+		}
 
 		if ( empty( $token ) ) {
 			return array();

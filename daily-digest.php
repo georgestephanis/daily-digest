@@ -6,6 +6,7 @@
  * Author: George Stephanis
  * Requires at least: 6.0
  * Requires PHP: 7.4
+ * Requires Plugins: keyring
  * Text Domain: daily-digest
  *
  * @package DailyDigest

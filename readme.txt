@@ -43,7 +43,7 @@ Optional fields:
 1. Upload the daily-digest folder to the /wp-content/plugins/ directory.
 2. Activate the plugin through the Plugins menu in WordPress.
 3. Go to Daily Digest > Settings.
-4. Enable and configure providers for the logged-in user.
+4. Enable providers, configure non-secret fields, and connect each provider through Keyring.
 
 == Provider Authentication Setup ==
 
@@ -60,20 +60,21 @@ Use the official provider docs for token/auth setup:
   * OAuth v2 and token scopes: https://api.slack.com/authentication/oauth-v2
   * User lookup method (for User ID): https://api.slack.com/methods/users.lookupByEmail
 
-Slack credential format expected by Daily Digest:
+Slack settings expected by Daily Digest:
 
 * Workspace Subdomain: workspace slug only (example: myworkspace from myworkspace.slack.com)
 * Slack User ID: target user ID (typically starts with U)
-* Bot User OAuth Token: token starting with xoxb-
+* Slack token is connected through Keyring (user token with search:read scope)
 
 Slack setup steps:
 
 1. Create a Slack app at https://api.slack.com/apps.
-2. In OAuth & Permissions, add bot scopes: channels:read, groups:read, channels:history, groups:history.
+2. In OAuth & Permissions, ensure you can issue a user token with search:read scope.
 3. Install or reinstall the app to your workspace.
-4. Copy the Bot User OAuth Token (xoxb-...).
+4. Copy a User OAuth Token (xoxp-...).
 5. Find the Slack User ID (users.lookupByEmail or profile tools).
-6. Enter values in Daily Digest > Settings and run Test Credentials.
+6. Enter Slack workspace/user values in Daily Digest > Settings.
+7. Use Connect via Keyring in Daily Digest > Settings and run Test Connection.
 
 == Extending ==
 
@@ -90,10 +91,10 @@ Where $provider_registry is an instance of DailyDigest\ProviderRegistry.
 Most empty digest results are caused by one of these:
 
 * The provider is not enabled in Daily Digest > Settings.
-* Credentials are missing or invalid for the provider.
+* Keyring connection is missing or invalid for the provider.
 * The selected time window has no matching activity.
 
-Use the provider Test Credentials button in Settings and then refresh the digest.
+Use the provider Test Connection button in Settings and then refresh the digest.
 
 = Who can view logs? =
 

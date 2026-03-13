@@ -46,18 +46,27 @@ class RestController {
 	private ApiLogger $api_logger;
 
 	/**
+	 * Keyring connection manager.
+	 *
+	 * @var KeyringConnectionManager
+	 */
+	private KeyringConnectionManager $keyring_connections;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param ProviderRegistry $provider_registry Provider registry.
 	 * @param UserSettings     $user_settings     User settings.
 	 * @param DigestService    $digest_service    Digest service.
-	 * @param ApiLogger        $api_logger        API logger service.
+	 * @param ApiLogger                $api_logger          API logger service.
+	 * @param KeyringConnectionManager $keyring_connections Keyring connection manager.
 	 */
-	public function __construct( ProviderRegistry $provider_registry, UserSettings $user_settings, DigestService $digest_service, ApiLogger $api_logger ) {
-		$this->provider_registry = $provider_registry;
-		$this->user_settings     = $user_settings;
-		$this->digest_service    = $digest_service;
-		$this->api_logger        = $api_logger;
+	public function __construct( ProviderRegistry $provider_registry, UserSettings $user_settings, DigestService $digest_service, ApiLogger $api_logger, KeyringConnectionManager $keyring_connections ) {
+		$this->provider_registry   = $provider_registry;
+		$this->user_settings       = $user_settings;
+		$this->digest_service      = $digest_service;
+		$this->api_logger          = $api_logger;
+		$this->keyring_connections = $keyring_connections;
 	}
 
 	/**
@@ -121,6 +130,16 @@ class RestController {
 			array(
 				'methods'             => \WP_REST_Server::CREATABLE,
 				'callback'            => array( $this, 'save_provider_credentials' ),
+				'permission_callback' => array( $this, 'can_read' ),
+			)
+		);
+
+		\register_rest_route(
+			'daily-digest/v1',
+			'/providers/(?P<provider>[a-z0-9_-]+)/disconnect',
+			array(
+				'methods'             => \WP_REST_Server::CREATABLE,
+				'callback'            => array( $this, 'disconnect_provider_connection' ),
 				'permission_callback' => array( $this, 'can_read' ),
 			)
 		);
@@ -504,6 +523,49 @@ class RestController {
 		}
 
 		return new \WP_REST_Response( $response_data, 200 );
+	}
+
+	/**
+	 * Disconnects the current user from a provider in Keyring.
+	 *
+	 * @param \WP_REST_Request $request REST request.
+	 *
+	 * @return \WP_REST_Response
+	 */
+	public function disconnect_provider_connection( \WP_REST_Request $request ): \WP_REST_Response {
+		$provider_slug = \sanitize_key( (string) $request->get_param( 'provider' ) );
+		$provider      = $this->provider_registry->get( $provider_slug );
+
+		if ( null === $provider ) {
+			return new \WP_REST_Response(
+				array(
+					'success' => false,
+					'message' => __( 'Provider not found.', 'daily-digest' ),
+				),
+				404
+			);
+		}
+
+		if ( ! $this->keyring_connections->is_available() ) {
+			return new \WP_REST_Response(
+				array(
+					'success' => false,
+					'message' => __( 'Keyring is not available.', 'daily-digest' ),
+				),
+				400
+			);
+		}
+
+		$deleted_count = $this->keyring_connections->disconnect_user( $provider_slug, \get_current_user_id() );
+
+		return new \WP_REST_Response(
+			array(
+				'success' => true,
+				'message' => __( 'Provider disconnected.', 'daily-digest' ),
+				'deleted' => $deleted_count,
+			),
+			200
+		);
 	}
 
 	/**

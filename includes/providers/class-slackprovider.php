@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace DailyDigest\Providers;
 
 use DailyDigest\Contracts\ProviderInterface;
+use DailyDigest\KeyringConnectionManager;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -19,6 +20,22 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Slack provider adapter.
  */
 class SlackProvider implements ProviderInterface {
+	/**
+	 * Keyring connection manager.
+	 *
+	 * @var KeyringConnectionManager
+	 */
+	private KeyringConnectionManager $keyring_connections;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param KeyringConnectionManager|null $keyring_connections Keyring connection manager.
+	 */
+	public function __construct( ?KeyringConnectionManager $keyring_connections = null ) {
+		$this->keyring_connections = $keyring_connections ?? new KeyringConnectionManager();
+	}
+
 	/**
 	 * Returns provider slug.
 	 *
@@ -44,10 +61,8 @@ class SlackProvider implements ProviderInterface {
 	 */
 	public function get_fields(): array {
 		return array(
-			'workspace'  => \__( 'Workspace Subdomain (e.g. myworkspace)', 'daily-digest' ),
-			'user_id'    => \__( 'Slack User ID (U…)', 'daily-digest' ),
-			'user_token' => \__( 'User OAuth Token (xoxp-…)', 'daily-digest' ),
-			'bot_token'  => \__( 'Bot User OAuth Token (xoxb-…)', 'daily-digest' ),
+			'workspace' => \__( 'Workspace Subdomain (e.g. myworkspace)', 'daily-digest' ),
+			'user_id'   => \__( 'Slack User ID (U…)', 'daily-digest' ),
 		);
 	}
 
@@ -59,14 +74,18 @@ class SlackProvider implements ProviderInterface {
 	 * @return array{success:bool,message:string,details?:array}
 	 */
 	public function test_credentials( array $provider_fields ): array {
-		$user_token = isset( $provider_fields['user_token'] ) ? \trim( (string) $provider_fields['user_token'] ) : '';
-		$bot_token  = isset( $provider_fields['bot_token'] ) ? \trim( (string) $provider_fields['bot_token'] ) : '';
-		$token      = ! empty( $user_token ) ? $user_token : $bot_token;
+		$token = $this->keyring_connections->get_access_token_string( 'slack', \get_current_user_id() );
+
+		if ( empty( $token ) ) {
+			$user_token = isset( $provider_fields['user_token'] ) ? \trim( (string) $provider_fields['user_token'] ) : '';
+			$bot_token  = isset( $provider_fields['bot_token'] ) ? \trim( (string) $provider_fields['bot_token'] ) : '';
+			$token      = ! empty( $user_token ) ? $user_token : $bot_token;
+		}
 
 		if ( empty( $token ) ) {
 			return array(
 				'success' => false,
-				'message' => __( 'Slack token is required. For notifications, use a User OAuth token (xoxp-...) with search:read scope.', 'daily-digest' ),
+				'message' => __( 'Connect Slack via Keyring first. Use a user token (xoxp-...) with search:read scope.', 'daily-digest' ),
 			);
 		}
 
@@ -135,7 +154,7 @@ class SlackProvider implements ProviderInterface {
 	 */
 	public function fetch_activity( int $user_id, array $provider_settings = array(), array $options = array() ): array {
 		$fields = $provider_settings['fields'] ?? array();
-		$items  = $this->fetch_notification_items( $fields, $options );
+		$items  = $this->fetch_notification_items( $user_id, $fields, $options );
 
 		/**
 		 * Filters Slack provider activity items.
@@ -165,14 +184,18 @@ class SlackProvider implements ProviderInterface {
 	 *
 	 * @return array
 	 */
-	private function fetch_notification_items( array $fields, array $options ): array {
+	private function fetch_notification_items( int $user_id, array $fields, array $options ): array {
 		$workspace  = isset( $fields['workspace'] ) ? \trim( (string) $fields['workspace'] ) : '';
-		$user_id    = isset( $fields['user_id'] ) ? \trim( (string) $fields['user_id'] ) : '';
-		$user_token = isset( $fields['user_token'] ) ? \trim( (string) $fields['user_token'] ) : '';
-		$bot_token  = isset( $fields['bot_token'] ) ? \trim( (string) $fields['bot_token'] ) : '';
-		$token      = ! empty( $user_token ) ? $user_token : $bot_token;
+		$slack_user = isset( $fields['user_id'] ) ? \trim( (string) $fields['user_id'] ) : '';
+		$token      = $this->keyring_connections->get_access_token_string( 'slack', $user_id );
 
-		if ( empty( $user_id ) || empty( $token ) ) {
+		if ( empty( $token ) ) {
+			$user_token = isset( $fields['user_token'] ) ? \trim( (string) $fields['user_token'] ) : '';
+			$bot_token  = isset( $fields['bot_token'] ) ? \trim( (string) $fields['bot_token'] ) : '';
+			$token      = ! empty( $user_token ) ? $user_token : $bot_token;
+		}
+
+		if ( empty( $slack_user ) || empty( $token ) ) {
 			return array();
 		}
 
@@ -181,7 +204,7 @@ class SlackProvider implements ProviderInterface {
 		$queries    = array(
 			array(
 				'type'  => 'notification',
-				'query' => '<@' . $user_id . '> after:' . $after_date,
+				'query' => '<@' . $slack_user . '> after:' . $after_date,
 			),
 			array(
 				'type'  => 'comment',

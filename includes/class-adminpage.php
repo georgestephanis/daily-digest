@@ -46,18 +46,27 @@ class AdminPage {
 	private ApiLogger $api_logger;
 
 	/**
+	 * Keyring connection manager.
+	 *
+	 * @var KeyringConnectionManager
+	 */
+	private KeyringConnectionManager $keyring_connections;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param ProviderRegistry $provider_registry Provider registry.
 	 * @param UserSettings     $user_settings     User settings service.
 	 * @param DigestService    $digest_service    Digest service.
-	 * @param ApiLogger        $api_logger        API logger service.
+	 * @param ApiLogger                $api_logger          API logger service.
+	 * @param KeyringConnectionManager $keyring_connections Keyring connection manager.
 	 */
-	public function __construct( ProviderRegistry $provider_registry, UserSettings $user_settings, DigestService $digest_service, ApiLogger $api_logger ) {
-		$this->provider_registry = $provider_registry;
-		$this->user_settings     = $user_settings;
-		$this->digest_service    = $digest_service;
-		$this->api_logger        = $api_logger;
+	public function __construct( ProviderRegistry $provider_registry, UserSettings $user_settings, DigestService $digest_service, ApiLogger $api_logger, KeyringConnectionManager $keyring_connections ) {
+		$this->provider_registry   = $provider_registry;
+		$this->user_settings       = $user_settings;
+		$this->digest_service      = $digest_service;
+		$this->api_logger          = $api_logger;
+		$this->keyring_connections = $keyring_connections;
 	}
 
 	/**
@@ -238,20 +247,6 @@ class AdminPage {
 				continue;
 			}
 
-			$fields   = isset( $provider_settings['fields'] ) && \is_array( $provider_settings['fields'] ) ? $provider_settings['fields'] : array();
-			$has_data = false;
-
-			foreach ( $fields as $field_value ) {
-				if ( '' !== \trim( (string) $field_value ) ) {
-					$has_data = true;
-					break;
-				}
-			}
-
-			if ( ! $has_data ) {
-				continue;
-			}
-
 			$items[] = array(
 				'slug' => $slug,
 				'name' => $provider->get_name(),
@@ -274,10 +269,14 @@ class AdminPage {
 		$current_settings = $this->user_settings->get_for_user( $current_user_id );
 		$rest_root        = \esc_url_raw( \rest_url( 'daily-digest/v1' ) );
 		$nonce            = \wp_create_nonce( 'wp_rest' );
+		$keyring_ready    = $this->keyring_connections->is_available();
 		?>
 		<div class="wrap">
 			<h1><?php \esc_html_e( 'Daily Digest Settings', 'daily-digest' ); ?></h1>
-			<p><?php \esc_html_e( 'Enable and configure providers for your digest.', 'daily-digest' ); ?></p>
+			<p><?php \esc_html_e( 'Enable providers, add non-secret settings, and connect each service through Keyring.', 'daily-digest' ); ?></p>
+			<?php if ( ! $keyring_ready ) : ?>
+				<div class="notice notice-warning inline"><p><?php \esc_html_e( 'Keyring is not available. Provider connections cannot be created.', 'daily-digest' ); ?></p></div>
+			<?php endif; ?>
 
 			<form method="post" id="daily-digest-settings-form">
 				<?php \wp_nonce_field( 'daily_digest_save_settings', 'daily_digest_nonce' ); ?>
@@ -289,6 +288,9 @@ class AdminPage {
 							$provider_settings = $current_settings[ $slug ] ?? array();
 							$enabled           = ! empty( $provider_settings['enabled'] );
 							$fields            = $provider_settings['fields'] ?? array();
+							$connected         = $this->keyring_connections->has_connection( $slug, $current_user_id );
+							$connect_url       = $this->keyring_connections->get_connect_url( $slug );
+							$manage_url        = $this->keyring_connections->get_manage_url( $slug );
 							?>
 							<tr data-provider="<?php echo \esc_attr( $slug ); ?>">
 								<th scope="row"><?php echo \esc_html( $provider->get_name() ); ?></th>
@@ -319,8 +321,29 @@ class AdminPage {
 										</p>
 									<?php endforeach; ?>
 									<p>
+										<strong><?php \esc_html_e( 'Connection:', 'daily-digest' ); ?></strong>
+										<?php echo $connected ? \esc_html__( 'Connected via Keyring', 'daily-digest' ) : \esc_html__( 'Not connected', 'daily-digest' ); ?>
+									</p>
+									<?php if ( ! empty( $connect_url ) ) : ?>
+										<p>
+											<a class="button" href="<?php echo \esc_url( $connect_url ); ?>">
+												<?php \esc_html_e( 'Connect via Keyring', 'daily-digest' ); ?>
+											</a>
+											<?php if ( ! empty( $manage_url ) ) : ?>
+												<a class="button button-secondary" href="<?php echo \esc_url( $manage_url ); ?>">
+													<?php \esc_html_e( 'Manage in Keyring', 'daily-digest' ); ?>
+												</a>
+											<?php endif; ?>
+											<?php if ( $connected ) : ?>
+												<button type="button" class="button button-link-delete daily-digest-disconnect-provider" data-provider="<?php echo \esc_attr( $slug ); ?>">
+													<?php \esc_html_e( 'Disconnect', 'daily-digest' ); ?>
+												</button>
+											<?php endif; ?>
+										</p>
+									<?php endif; ?>
+									<p>
 										<button type="button" class="button button-secondary daily-digest-test-credentials" data-provider="<?php echo \esc_attr( $slug ); ?>">
-											<?php \esc_html_e( 'Test Credentials', 'daily-digest' ); ?>
+											<?php \esc_html_e( 'Test Connection', 'daily-digest' ); ?>
 										</button>
 										<button type="button" class="button button-primary daily-digest-save-credentials" data-provider="<?php echo \esc_attr( $slug ); ?>">
 											<?php \esc_html_e( 'Save Provider', 'daily-digest' ); ?>
@@ -343,6 +366,7 @@ class AdminPage {
 			const restNonce = <?php echo \wp_json_encode( $nonce ); ?>;
 			const buttons = document.querySelectorAll('.daily-digest-test-credentials');
 			const saveButtons = document.querySelectorAll('.daily-digest-save-credentials');
+			const disconnectButtons = document.querySelectorAll('.daily-digest-disconnect-provider');
 
 			const setResult = (provider, text, ok) => {
 				const el = document.getElementById(`daily-digest-test-result-${provider}`);
@@ -451,6 +475,43 @@ class AdminPage {
 
 					setSaveResult(provider, payload.message || <?php echo \wp_json_encode( __( 'Provider credentials saved.', 'daily-digest' ) ); ?>, true);
 					button.disabled = false;
+				});
+			});
+
+			disconnectButtons.forEach((button) => {
+				button.addEventListener('click', async () => {
+					const provider = button.getAttribute('data-provider') || '';
+					if (!provider) {
+						return;
+					}
+
+					button.disabled = true;
+					setSaveResult(provider, <?php echo \wp_json_encode( __( 'Disconnecting…', 'daily-digest' ) ); ?>, true);
+
+					const response = await fetch(`${restRoot}/providers/${encodeURIComponent(provider)}/disconnect`, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+							'X-WP-Nonce': restNonce,
+						}
+					});
+
+					let payload = null;
+					try {
+						payload = await response.json();
+					} catch (e) {
+						payload = null;
+					}
+
+					if (!response.ok || !payload || !payload.success) {
+						const message = payload && payload.message ? payload.message : <?php echo \wp_json_encode( __( 'Unable to disconnect provider.', 'daily-digest' ) ); ?>;
+						setSaveResult(provider, message, false);
+						button.disabled = false;
+						return;
+					}
+
+					setSaveResult(provider, payload.message || <?php echo \wp_json_encode( __( 'Provider disconnected.', 'daily-digest' ) ); ?>, true);
+					window.location.reload();
 				});
 			});
 		})();

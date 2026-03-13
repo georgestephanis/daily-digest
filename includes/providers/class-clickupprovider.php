@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace DailyDigest\Providers;
 
 use DailyDigest\Contracts\ProviderInterface;
+use DailyDigest\KeyringConnectionManager;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -19,6 +20,22 @@ if ( ! defined( 'ABSPATH' ) ) {
  * ClickUp provider adapter.
  */
 class ClickupProvider implements ProviderInterface {
+	/**
+	 * Keyring connection manager.
+	 *
+	 * @var KeyringConnectionManager
+	 */
+	private KeyringConnectionManager $keyring_connections;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param KeyringConnectionManager|null $keyring_connections Keyring connection manager.
+	 */
+	public function __construct( ?KeyringConnectionManager $keyring_connections = null ) {
+		$this->keyring_connections = $keyring_connections ?? new KeyringConnectionManager();
+	}
+
 	/**
 	 * Returns provider slug.
 	 *
@@ -45,7 +62,6 @@ class ClickupProvider implements ProviderInterface {
 	public function get_fields(): array {
 		return array(
 			'workspace_id' => \__( 'Workspace ID', 'daily-digest' ),
-			'token'        => \__( 'API Token', 'daily-digest' ),
 		);
 	}
 
@@ -57,12 +73,16 @@ class ClickupProvider implements ProviderInterface {
 	 * @return array{success:bool,message:string,details?:array}
 	 */
 	public function test_credentials( array $provider_fields ): array {
-		$token = isset( $provider_fields['token'] ) ? \trim( (string) $provider_fields['token'] ) : '';
+		$token = $this->keyring_connections->get_access_token_string( 'clickup', \get_current_user_id() );
+
+		if ( empty( $token ) ) {
+			$token = isset( $provider_fields['token'] ) ? \trim( (string) $provider_fields['token'] ) : '';
+		}
 
 		if ( empty( $token ) ) {
 			return array(
 				'success' => false,
-				'message' => __( 'ClickUp token is required.', 'daily-digest' ),
+				'message' => __( 'Connect ClickUp via Keyring first.', 'daily-digest' ),
 			);
 		}
 
@@ -115,7 +135,7 @@ class ClickupProvider implements ProviderInterface {
 	 */
 	public function fetch_activity( int $user_id, array $provider_settings = array(), array $options = array() ): array {
 		$fields = $provider_settings['fields'] ?? array();
-		$items  = $this->fetch_tasks( $fields, $options );
+		$items  = $this->fetch_tasks( $user_id, $fields, $options );
 
 		/**
 		 * Filters ClickUp provider activity items.
@@ -145,9 +165,13 @@ class ClickupProvider implements ProviderInterface {
 	 *
 	 * @return array
 	 */
-	private function fetch_tasks( array $fields, array $options ): array {
+	private function fetch_tasks( int $user_id, array $fields, array $options ): array {
 		$workspace_id = isset( $fields['workspace_id'] ) ? \trim( (string) $fields['workspace_id'] ) : '';
-		$token        = isset( $fields['token'] ) ? \trim( (string) $fields['token'] ) : '';
+		$token        = $this->keyring_connections->get_access_token_string( 'clickup', $user_id );
+
+		if ( empty( $token ) ) {
+			$token = isset( $fields['token'] ) ? \trim( (string) $fields['token'] ) : '';
+		}
 
 		if ( empty( $workspace_id ) || empty( $token ) ) {
 			return array();

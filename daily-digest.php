@@ -61,5 +61,6 @@ add_action(
 	'plugins_loaded',
 	static function () {
 		DailyDigest\Plugin::instance()->boot();
-	}
+	},
+	20
 );

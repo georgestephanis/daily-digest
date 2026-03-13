@@ -60,10 +60,7 @@ class SlackProvider implements ProviderInterface {
 	 * @return array
 	 */
 	public function get_fields(): array {
-		return array(
-			'workspace' => \__( 'Workspace Subdomain (e.g. myworkspace)', 'daily-digest' ),
-			'user_id'   => \__( 'Slack User ID (U…)', 'daily-digest' ),
-		);
+		return array();
 	}
 
 	/**
@@ -179,9 +176,10 @@ class SlackProvider implements ProviderInterface {
 	 * @return array
 	 */
 	private function fetch_notification_items( int $user_id, array $fields, array $options ): array {
-		$workspace  = isset( $fields['workspace'] ) ? \trim( (string) $fields['workspace'] ) : '';
-		$slack_user = isset( $fields['user_id'] ) ? \trim( (string) $fields['user_id'] ) : '';
 		$token      = $this->keyring_connections->get_access_token_string( 'slack', $user_id );
+		$context    = $this->resolve_slack_context( $user_id, $token );
+		$workspace  = $context['workspace'];
+		$slack_user = $context['slack_user'];
 
 		if ( empty( $slack_user ) || empty( $token ) ) {
 			return array();
@@ -239,6 +237,50 @@ class SlackProvider implements ProviderInterface {
 					return ! empty( $item['timestamp'] ) && ! empty( $item['title'] );
 				}
 			)
+		);
+	}
+
+	/**
+	 * Resolves Slack user/domain context from Keyring metadata or auth.test.
+	 *
+	 * @param int    $user_id WordPress user ID.
+	 * @param string $token   Slack token.
+	 *
+	 * @return array{workspace:string,slack_user:string}
+	 */
+	private function resolve_slack_context( int $user_id, string $token ): array {
+		$workspace  = (string) $this->keyring_connections->get_connection_meta_for_user( 'slack', $user_id, 'team_domain' );
+		$slack_user = (string) $this->keyring_connections->get_connection_meta_for_user( 'slack', $user_id, 'user_id' );
+
+		if ( ! empty( $workspace ) && ! empty( $slack_user ) ) {
+			return array(
+				'workspace'  => $workspace,
+				'slack_user' => $slack_user,
+			);
+		}
+
+		$payload = $this->call_api_method( 'auth.test', array(), $token );
+		if ( null === $payload ) {
+			return array(
+				'workspace'  => $workspace,
+				'slack_user' => $slack_user,
+			);
+		}
+
+		if ( empty( $slack_user ) && ! empty( $payload['user_id'] ) ) {
+			$slack_user = (string) $payload['user_id'];
+		}
+
+		if ( empty( $workspace ) && ! empty( $payload['url'] ) ) {
+			$host = \wp_parse_url( (string) $payload['url'], PHP_URL_HOST );
+			if ( \is_string( $host ) && false !== strpos( $host, '.slack.com' ) ) {
+				$workspace = str_replace( '.slack.com', '', strtolower( $host ) );
+			}
+		}
+
+		return array(
+			'workspace'  => $workspace,
+			'slack_user' => $slack_user,
 		);
 	}
 

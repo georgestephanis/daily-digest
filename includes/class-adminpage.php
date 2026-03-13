@@ -273,7 +273,7 @@ class AdminPage {
 		?>
 		<div class="wrap">
 			<h1><?php \esc_html_e( 'Daily Digest Settings', 'daily-digest' ); ?></h1>
-			<p><?php \esc_html_e( 'Enable providers, add non-secret settings, and connect each service through Keyring.', 'daily-digest' ); ?></p>
+			<p><?php \esc_html_e( 'Enable providers and connect each service through Keyring. Connection metadata is shown below.', 'daily-digest' ); ?></p>
 			<?php if ( ! $keyring_ready ) : ?>
 				<div class="notice notice-warning inline"><p><?php \esc_html_e( 'Keyring is not available. Provider connections cannot be created.', 'daily-digest' ); ?></p></div>
 			<?php endif; ?>
@@ -289,6 +289,7 @@ class AdminPage {
 							$enabled           = ! empty( $provider_settings['enabled'] );
 							$fields            = $provider_settings['fields'] ?? array();
 							$connected         = $this->keyring_connections->has_connection( $slug, $current_user_id );
+							$connection_meta   = $this->keyring_connections->get_connection_meta_for_user( $slug, $current_user_id );
 							$connect_url       = $this->keyring_connections->get_connect_url( $slug );
 							$manage_url        = $this->keyring_connections->get_manage_url( $slug );
 							?>
@@ -324,6 +325,12 @@ class AdminPage {
 										<strong><?php \esc_html_e( 'Connection:', 'daily-digest' ); ?></strong>
 										<?php echo $connected ? \esc_html__( 'Connected via Keyring', 'daily-digest' ) : \esc_html__( 'Not connected', 'daily-digest' ); ?>
 									</p>
+									<?php if ( $connected ) : ?>
+										<p>
+											<strong><?php \esc_html_e( 'Connection Metadata:', 'daily-digest' ); ?></strong><br />
+											<?php echo wp_kses_post( $this->render_connection_meta( $slug, $connection_meta ) ); ?>
+										</p>
+									<?php endif; ?>
 									<?php if ( ! empty( $connect_url ) ) : ?>
 										<p>
 											<a class="button" href="<?php echo \esc_url( $connect_url ); ?>">
@@ -602,6 +609,103 @@ class AdminPage {
 		);
 
 		return $docs[ $provider_slug ] ?? array();
+	}
+
+	/**
+	 * Renders provider connection metadata as plain lines.
+	 *
+	 * @param string               $provider_slug Provider slug.
+	 * @param array<string, mixed> $meta          Raw token metadata.
+	 *
+	 * @return string
+	 */
+	private function render_connection_meta( string $provider_slug, array $meta ): string {
+		if ( empty( $meta ) ) {
+			return \esc_html__( 'No metadata available.', 'daily-digest' );
+		}
+
+		$labels = $this->get_connection_meta_labels( $provider_slug );
+		$lines  = array();
+
+		foreach ( $labels as $meta_key => $label ) {
+			if ( ! array_key_exists( $meta_key, $meta ) ) {
+				continue;
+			}
+
+			$formatted_value = $this->format_connection_meta_value( $meta[ $meta_key ] );
+			if ( '' === $formatted_value ) {
+				continue;
+			}
+
+			$lines[] = '<strong>' . \esc_html( $label ) . ':</strong> ' . \esc_html( $formatted_value );
+		}
+
+		if ( empty( $lines ) ) {
+			return \esc_html__( 'No metadata available.', 'daily-digest' );
+		}
+
+		return implode( '<br />', $lines );
+	}
+
+	/**
+	 * Returns known metadata label mappings by provider.
+	 *
+	 * @param string $provider_slug Provider slug.
+	 *
+	 * @return array<string, string>
+	 */
+	private function get_connection_meta_labels( string $provider_slug ): array {
+		$map = array(
+			'github'  => array(
+				'name'        => __( 'Name', 'daily-digest' ),
+				'username'    => __( 'Username', 'daily-digest' ),
+				'profile_url' => __( 'Profile URL', 'daily-digest' ),
+			),
+			'clickup' => array(
+				'name'            => __( 'Name', 'daily-digest' ),
+				'username'        => __( 'Username', 'daily-digest' ),
+				'user_id'         => __( 'User ID', 'daily-digest' ),
+				'team_names'      => __( 'Teams', 'daily-digest' ),
+				'default_team_id' => __( 'Default Team ID', 'daily-digest' ),
+			),
+			'slack'   => array(
+				'name'        => __( 'Display Name', 'daily-digest' ),
+				'team'        => __( 'Team', 'daily-digest' ),
+				'team_domain' => __( 'Team Domain', 'daily-digest' ),
+				'user_id'     => __( 'User ID', 'daily-digest' ),
+				'team_url'    => __( 'Team URL', 'daily-digest' ),
+			),
+		);
+
+		return $map[ $provider_slug ] ?? array();
+	}
+
+	/**
+	 * Formats metadata values for display.
+	 *
+	 * @param mixed $value Raw metadata value.
+	 *
+	 * @return string
+	 */
+	private function format_connection_meta_value( $value ): string {
+		if ( is_scalar( $value ) ) {
+			return trim( (string) $value );
+		}
+
+		if ( is_array( $value ) ) {
+			$values = array_filter(
+				array_map(
+					static function ( $item ): string {
+						return is_scalar( $item ) ? trim( (string) $item ) : '';
+					},
+					$value
+				)
+			);
+
+			return implode( ', ', $values );
+		}
+
+		return '';
 	}
 
 	/**

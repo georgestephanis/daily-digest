@@ -21,7 +21,7 @@ Daily Digest is a WordPress plugin that aggregates per-user activity from multip
 
 1. Place this folder at `wp-content/plugins/daily-digest`.
 2. Activate **Daily Digest** in wp-admin.
-3. Visit **Daily Digest → Settings** to enable providers, configure non-secret fields, and connect each provider through Keyring.
+3. Visit **Daily Digest → Settings** to enable providers and connect each provider through Keyring.
 4. Visit **Daily Digest → Overview** to view activity.
 5. Visit **Daily Digest → Logs** (admins only) for logging controls and log viewer.
 
@@ -43,15 +43,11 @@ Daily Digest is a WordPress plugin that aggregates per-user activity from multip
 - OAuth v2: https://api.slack.com/authentication/oauth-v2
 - User Lookup: https://api.slack.com/methods/users.lookupByEmail
 
-### Slack Settings (What Daily Digest Expects)
+### Connection Metadata
 
-Daily Digest stores the Slack token in Keyring and keeps only non-secret values in Daily Digest settings.
+Daily Digest stores provider tokens and connection context in Keyring metadata.
 
-Required fields in Settings:
-
-- `Workspace Subdomain`: your workspace slug only (for example, `myworkspace` from `myworkspace.slack.com`)
-- `Slack User ID`: the user whose messages you want to include (typically starts with `U`)
-- Connect Slack via Keyring with a user token that can read search results.
+Connection context such as Slack user/team or ClickUp team IDs is discovered from provider APIs during Keyring verification and displayed read-only in Daily Digest settings.
 
 ### Slack Setup Steps (Recommended)
 
@@ -67,10 +63,8 @@ Required fields in Settings:
 6. Obtain the target Slack User ID:
    - via `users.lookupByEmail` (API method), or
    - from the Slack profile menu in the app/client.
-7. In WordPress, open **Daily Digest → Settings** and enter:
-   - Workspace subdomain,
-   - Slack User ID.
-8. Click **Connect via Keyring** for Slack, save settings, and run **Test Connection**.
+7. In WordPress, open **Daily Digest → Settings** and click **Connect via Keyring** for Slack.
+8. Run **Test Connection**.
 
 ### Common Slack Auth Issues
 

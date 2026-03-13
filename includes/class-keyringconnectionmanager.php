@@ -186,6 +186,35 @@ class KeyringConnectionManager {
 	}
 
 	/**
+	 * Returns token metadata for provider and user, or one metadata value.
+	 *
+	 * @param string $provider_slug Provider slug.
+	 * @param int    $user_id       User ID.
+	 * @param string $meta_key      Optional metadata key.
+	 *
+	 * @return array<string, mixed>|mixed|null
+	 */
+	public function get_connection_meta_for_user( string $provider_slug, int $user_id, string $meta_key = '' ) {
+		$token = $this->get_token_for_user( $provider_slug, $user_id );
+		if ( null === $token || ! \method_exists( $token, 'get_meta' ) ) {
+			return '' === $meta_key ? array() : null;
+		}
+
+		$meta = $token->get_meta();
+		if ( ! \is_array( $meta ) ) {
+			return '' === $meta_key ? array() : null;
+		}
+
+		unset( $meta['type'] );
+
+		if ( '' !== $meta_key ) {
+			return $meta[ $meta_key ] ?? null;
+		}
+
+		return $meta;
+	}
+
+	/**
 	 * Deletes all provider tokens for the user.
 	 *
 	 * @param string $provider_slug Provider slug.

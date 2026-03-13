@@ -60,9 +60,7 @@ class GithubProvider implements ProviderInterface {
 	 * @return array
 	 */
 	public function get_fields(): array {
-		return array(
-			'username' => \__( 'GitHub Username', 'daily-digest' ),
-		);
+		return array();
 	}
 
 	/**
@@ -74,7 +72,7 @@ class GithubProvider implements ProviderInterface {
 	 */
 	public function test_credentials( array $provider_fields ): array {
 		$token    = $this->keyring_connections->get_access_token_string( 'github', \get_current_user_id() );
-		$username = isset( $provider_fields['username'] ) ? \trim( (string) $provider_fields['username'] ) : '';
+		$username = (string) $this->keyring_connections->get_connection_meta_for_user( 'github', \get_current_user_id(), 'username' );
 
 		if ( empty( $token ) ) {
 			return array(
@@ -181,7 +179,7 @@ class GithubProvider implements ProviderInterface {
 			return array();
 		}
 
-		$username = isset( $fields['username'] ) ? \trim( (string) $fields['username'] ) : '';
+		$username = (string) $this->keyring_connections->get_connection_meta_for_user( 'github', $user_id, 'username' );
 		$days     = isset( $options['days'] ) ? \max( 1, \absint( $options['days'] ) ) : 1;
 		$since    = \gmdate( 'c', \strtotime( '-' . $days . ' days' ) );
 

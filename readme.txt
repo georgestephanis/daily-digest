@@ -43,7 +43,7 @@ Optional fields:
 1. Upload the daily-digest folder to the /wp-content/plugins/ directory.
 2. Activate the plugin through the Plugins menu in WordPress.
 3. Go to Daily Digest > Settings.
-4. Enable providers, configure non-secret fields, and connect each provider through Keyring.
+4. Enable providers and connect each provider through Keyring.
 
 == Provider Authentication Setup ==
 
@@ -60,11 +60,9 @@ Use the official provider docs for token/auth setup:
   * OAuth v2 and token scopes: https://api.slack.com/authentication/oauth-v2
   * User lookup method (for User ID): https://api.slack.com/methods/users.lookupByEmail
 
-Slack settings expected by Daily Digest:
+Daily Digest stores provider tokens and connection context in Keyring metadata.
 
-* Workspace Subdomain: workspace slug only (example: myworkspace from myworkspace.slack.com)
-* Slack User ID: target user ID (typically starts with U)
-* Slack token is connected through Keyring (user token with search:read scope)
+Connection context (for example Slack user/team and ClickUp team IDs) is discovered from provider APIs during Keyring verification and displayed read-only in Daily Digest settings.
 
 Slack setup steps:
 
@@ -73,8 +71,7 @@ Slack setup steps:
 3. Install or reinstall the app to your workspace.
 4. Copy a User OAuth Token (xoxp-...).
 5. Find the Slack User ID (users.lookupByEmail or profile tools).
-6. Enter Slack workspace/user values in Daily Digest > Settings.
-7. Use Connect via Keyring in Daily Digest > Settings and run Test Connection.
+6. Use Connect via Keyring in Daily Digest > Settings and run Test Connection.
 
 == Extending ==
 

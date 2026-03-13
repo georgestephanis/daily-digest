@@ -219,8 +219,9 @@ class Daily_Digest_Keyring_Service_Github extends Daily_Digest_Keyring_Service_B
 			'success' => true,
 			'message' => __( 'GitHub token verified.', 'daily-digest' ),
 			'meta'    => array(
-				'username' => (string) $payload['login'],
-				'name'     => isset( $payload['name'] ) ? (string) $payload['name'] : (string) $payload['login'],
+				'username'    => (string) $payload['login'],
+				'name'        => isset( $payload['name'] ) ? (string) $payload['name'] : (string) $payload['login'],
+				'profile_url' => isset( $payload['html_url'] ) ? (string) $payload['html_url'] : '',
 			),
 		);
 	}
@@ -263,12 +264,50 @@ class Daily_Digest_Keyring_Service_Clickup extends Daily_Digest_Keyring_Service_
 			);
 		}
 
+		$teams_response = wp_remote_get(
+			'https://api.clickup.com/api/v2/team',
+			array(
+				'timeout' => 15,
+				'headers' => array(
+					'Authorization' => $token,
+				),
+			)
+		);
+
+		$team_ids      = array();
+		$team_names    = array();
+		$default_team  = '';
+
+		if ( ! is_wp_error( $teams_response ) && 200 === (int) wp_remote_retrieve_response_code( $teams_response ) ) {
+			$teams_payload = json_decode( (string) wp_remote_retrieve_body( $teams_response ), true );
+			$teams         = isset( $teams_payload['teams'] ) && is_array( $teams_payload['teams'] ) ? $teams_payload['teams'] : array();
+
+			foreach ( $teams as $team ) {
+				if ( ! is_array( $team ) || empty( $team['id'] ) ) {
+					continue;
+				}
+
+				$team_ids[] = (string) $team['id'];
+				if ( ! empty( $team['name'] ) ) {
+					$team_names[] = (string) $team['name'];
+				}
+			}
+
+			if ( ! empty( $team_ids ) ) {
+				$default_team = (string) $team_ids[0];
+			}
+		}
+
 		return array(
 			'success' => true,
 			'message' => __( 'ClickUp token verified.', 'daily-digest' ),
 			'meta'    => array(
-				'username' => (string) $payload['user']['username'],
-				'name'     => (string) $payload['user']['username'],
+				'username'        => (string) $payload['user']['username'],
+				'name'            => (string) $payload['user']['username'],
+				'user_id'         => isset( $payload['user']['id'] ) ? (string) $payload['user']['id'] : '',
+				'team_ids'        => $team_ids,
+				'team_names'      => $team_names,
+				'default_team_id' => $default_team,
 			),
 		);
 	}
@@ -320,11 +359,26 @@ class Daily_Digest_Keyring_Service_Slack extends Daily_Digest_Keyring_Service_Ba
 			$name = (string) $payload['user'];
 		}
 
+		$team_url    = isset( $payload['url'] ) ? (string) $payload['url'] : '';
+		$team_domain = '';
+
+		if ( ! empty( $team_url ) ) {
+			$host = wp_parse_url( $team_url, PHP_URL_HOST );
+			if ( is_string( $host ) && false !== strpos( $host, '.slack.com' ) ) {
+				$team_domain = str_replace( '.slack.com', '', strtolower( $host ) );
+			}
+		}
+
 		return array(
 			'success' => true,
 			'message' => __( 'Slack token verified.', 'daily-digest' ),
 			'meta'    => array(
-				'name' => $name,
+				'name'        => $name,
+				'team'        => isset( $payload['team'] ) ? (string) $payload['team'] : '',
+				'team_id'     => isset( $payload['team_id'] ) ? (string) $payload['team_id'] : '',
+				'user_id'     => isset( $payload['user_id'] ) ? (string) $payload['user_id'] : '',
+				'team_url'    => $team_url,
+				'team_domain' => $team_domain,
 			),
 		);
 	}

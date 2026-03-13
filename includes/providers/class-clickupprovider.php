@@ -60,9 +60,7 @@ class ClickupProvider implements ProviderInterface {
 	 * @return array
 	 */
 	public function get_fields(): array {
-		return array(
-			'workspace_id' => \__( 'Workspace ID', 'daily-digest' ),
-		);
+		return array();
 	}
 
 	/**
@@ -162,71 +160,78 @@ class ClickupProvider implements ProviderInterface {
 	 * @return array
 	 */
 	private function fetch_tasks( int $user_id, array $fields, array $options ): array {
-		$workspace_id = isset( $fields['workspace_id'] ) ? \trim( (string) $fields['workspace_id'] ) : '';
-		$token        = $this->keyring_connections->get_access_token_string( 'clickup', $user_id );
+		$token = $this->keyring_connections->get_access_token_string( 'clickup', $user_id );
 
-		if ( empty( $workspace_id ) || empty( $token ) ) {
+		if ( empty( $token ) ) {
+			return array();
+		}
+
+		$team_ids = $this->resolve_team_ids( $user_id, $token );
+		if ( empty( $team_ids ) ) {
 			return array();
 		}
 
 		$days           = isset( $options['days'] ) ? \max( 1, \absint( $options['days'] ) ) : 1;
 		$since_unix     = \strtotime( '-' . $days . ' days' );
 		$since_millis   = false !== $since_unix ? (int) $since_unix * 1000 : 0;
-		$base_url       = 'https://api.clickup.com/api/v2/team/' . rawurlencode( $workspace_id ) . '/task';
-		$current_page   = 0;
-		$max_pages      = 5;
 		$activity_items = array();
+		$max_pages      = 5;
 
-		while ( $current_page < $max_pages ) {
-			$request_url = \add_query_arg(
-				array(
-					'include_closed'  => 'true',
-					'page'            => (string) $current_page,
-					'date_updated_gt' => (string) $since_millis,
-				),
-				$base_url
-			);
+		foreach ( $team_ids as $team_id ) {
+			$current_page = 0;
+			$base_url     = 'https://api.clickup.com/api/v2/team/' . rawurlencode( (string) $team_id ) . '/task';
 
-			$response = \wp_remote_get(
-				$request_url,
-				array(
-					'timeout' => 15,
-					'headers' => array(
-						'Authorization' => $token,
+			while ( $current_page < $max_pages ) {
+				$request_url = \add_query_arg(
+					array(
+						'include_closed'  => 'true',
+						'page'            => (string) $current_page,
+						'date_updated_gt' => (string) $since_millis,
 					),
-				)
-			);
+					$base_url
+				);
 
-			if ( \is_wp_error( $response ) ) {
-				break;
-			}
+				$response = \wp_remote_get(
+					$request_url,
+					array(
+						'timeout' => 15,
+						'headers' => array(
+							'Authorization' => $token,
+						),
+					)
+				);
 
-			$status_code = (int) \wp_remote_retrieve_response_code( $response );
-			if ( 200 !== $status_code ) {
-				break;
-			}
-
-			$body    = (string) \wp_remote_retrieve_body( $response );
-			$payload = \json_decode( $body, true );
-			$tasks   = isset( $payload['tasks'] ) && \is_array( $payload['tasks'] ) ? $payload['tasks'] : array();
-
-			if ( empty( $tasks ) ) {
-				break;
-			}
-
-			foreach ( $tasks as $task ) {
-				if ( ! \is_array( $task ) ) {
-					continue;
+				if ( \is_wp_error( $response ) ) {
+					break;
 				}
 
-				$activity_items[] = $this->map_task_to_item( $task );
-			}
+				$status_code = (int) \wp_remote_retrieve_response_code( $response );
+				if ( 200 !== $status_code ) {
+					break;
+				}
 
-			if ( count( $tasks ) < 100 ) {
-				break;
-			}
+				$body    = (string) \wp_remote_retrieve_body( $response );
+				$payload = \json_decode( $body, true );
+				$tasks   = isset( $payload['tasks'] ) && \is_array( $payload['tasks'] ) ? $payload['tasks'] : array();
 
-			++$current_page;
+				if ( empty( $tasks ) ) {
+					break;
+				}
+
+				foreach ( $tasks as $task ) {
+					if ( ! \is_array( $task ) ) {
+						continue;
+					}
+
+					$activity_items[] = $this->map_task_to_item( $task );
+				}
+
+				if ( count( $tasks ) < 100 ) {
+					break;
+				}
+
+				++$current_page;
+			}
 		}
 
 		return \array_values(
@@ -237,6 +242,66 @@ class ClickupProvider implements ProviderInterface {
 				}
 			)
 		);
+	}
+
+	/**
+	 * Resolves ClickUp team IDs from Keyring metadata or API.
+	 *
+	 * @param int    $user_id User ID.
+	 * @param string $token   ClickUp token.
+	 *
+	 * @return array<int, string>
+	 */
+	private function resolve_team_ids( int $user_id, string $token ): array {
+		$team_ids = $this->keyring_connections->get_connection_meta_for_user( 'clickup', $user_id, 'team_ids' );
+
+		if ( \is_array( $team_ids ) && ! empty( $team_ids ) ) {
+			return \array_values(
+				\array_filter(
+					\array_map( 'strval', $team_ids ),
+					static function ( string $team_id ): bool {
+						return '' !== \trim( $team_id );
+					}
+				)
+			);
+		}
+
+		$default_team_id = $this->keyring_connections->get_connection_meta_for_user( 'clickup', $user_id, 'default_team_id' );
+		if ( \is_string( $default_team_id ) && '' !== \trim( $default_team_id ) ) {
+			return array( \trim( $default_team_id ) );
+		}
+
+		$response = \wp_remote_get(
+			'https://api.clickup.com/api/v2/team',
+			array(
+				'timeout' => 15,
+				'headers' => array(
+					'Authorization' => $token,
+				),
+			)
+		);
+
+		if ( \is_wp_error( $response ) || 200 !== (int) \wp_remote_retrieve_response_code( $response ) ) {
+			return array();
+		}
+
+		$payload = \json_decode( (string) \wp_remote_retrieve_body( $response ), true );
+		$teams   = isset( $payload['teams'] ) && \is_array( $payload['teams'] ) ? $payload['teams'] : array();
+
+		if ( empty( $teams ) ) {
+			return array();
+		}
+
+		$resolved = array();
+		foreach ( $teams as $team ) {
+			if ( ! \is_array( $team ) || empty( $team['id'] ) ) {
+				continue;
+			}
+
+			$resolved[] = (string) $team['id'];
+		}
+
+		return $resolved;
 	}
 
 	/**

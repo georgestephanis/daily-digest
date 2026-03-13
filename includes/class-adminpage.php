@@ -300,19 +300,6 @@ class AdminPage {
 										<input type="checkbox" name="daily_digest_settings[<?php echo \esc_attr( $slug ); ?>][enabled]" value="1" <?php \checked( $enabled ); ?> />
 										<?php \esc_html_e( 'Enable provider', 'daily-digest' ); ?>
 									</label>
-									<?php $setup_links = $this->get_provider_setup_links( $slug ); ?>
-									<?php if ( ! empty( $setup_links ) ) : ?>
-										<p>
-											<strong><?php \esc_html_e( 'Setup Docs:', 'daily-digest' ); ?></strong>
-											<?php
-											$rendered_links = array();
-											foreach ( $setup_links as $label => $url ) {
-												$rendered_links[] = '<a href="' . \esc_url( $url ) . '" target="_blank" rel="noopener noreferrer">' . \esc_html( $label ) . '</a>';
-											}
-											echo wp_kses_post( implode( ' | ', $rendered_links ) );
-											?>
-										</p>
-									<?php endif; ?>
 									<?php foreach ( $provider->get_fields() as $field_key => $field_label ) : ?>
 										<p>
 											<label>
@@ -580,36 +567,6 @@ class AdminPage {
 			</div>
 		</div>
 		<?php
-	}
-
-	/**
-	 * Returns setup documentation links for a provider slug.
-	 *
-	 * @param string $provider_slug Provider slug.
-	 *
-	 * @return array<string, string>
-	 */
-	private function get_provider_setup_links( string $provider_slug ): array {
-		$docs = array(
-			'github'  => array(
-				'Create OAuth App'          => 'https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app',
-				'OAuth App Overview'        => 'https://docs.github.com/en/apps/oauth-apps',
-				'OAuth Redirect Guidelines' => 'https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps',
-			),
-			'clickup' => array(
-				'ClickUp API Authentication' => 'https://developer.clickup.com/docs/authentication',
-				'Generate Personal Token'    => 'https://help.clickup.com/hc/en-us/articles/6303426241687-Use-the-ClickUp-API',
-			),
-			'slack'   => array(
-				'Create Slack App'                      => 'https://api.slack.com/apps',
-				'OAuth & Permissions (Bot/User Tokens)' => 'https://api.slack.com/authentication/oauth-v2',
-				'Search API (search.messages)'          => 'https://api.slack.com/methods/search.messages',
-				'Auth Test (auth.test)'                 => 'https://api.slack.com/methods/auth.test',
-				'Find Slack User ID'                    => 'https://api.slack.com/methods/users.lookupByEmail',
-			),
-		);
-
-		return $docs[ $provider_slug ] ?? array();
 	}
 
 	/**

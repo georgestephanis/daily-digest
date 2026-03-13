@@ -43,7 +43,7 @@ class ClickupProvider extends AbstractProvider {
 	 * @return string
 	 */
 	public function get_keyring_service_name(): string {
-		return 'daily_digest_clickup';
+		return 'daily_digest_clickup_pat';
 	}
 
 	/**

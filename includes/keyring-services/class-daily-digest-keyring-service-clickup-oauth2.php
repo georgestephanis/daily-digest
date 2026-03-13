@@ -9,13 +9,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-if ( ! class_exists( 'Daily_Digest_Keyring_Service_Clickup' ) && class_exists( 'Keyring_Service_OAuth2' ) ) {
+if ( ! class_exists( 'Daily_Digest_Keyring_Service_Clickup_OAuth2' ) && class_exists( 'Keyring_Service_OAuth2' ) ) {
 	/**
 	 * ClickUp OAuth provider for Daily Digest.
 	 */
-	class Daily_Digest_Keyring_Service_Clickup extends Keyring_Service_OAuth2 {
-		const NAME  = 'daily_digest_clickup';
-		const LABEL = 'Daily Digest ClickUp';
+	class Daily_Digest_Keyring_Service_Clickup_OAuth2 extends Keyring_Service_OAuth2 {
+		const NAME  = 'daily_digest_clickup_oauth2';
+		const LABEL = 'Daily Digest ClickUp OAuth2';
 
 		/**
 		 * Constructor.
@@ -24,8 +24,8 @@ if ( ! class_exists( 'Daily_Digest_Keyring_Service_Clickup' ) && class_exists( '
 			parent::__construct();
 
 			if ( ! KEYRING__HEADLESS_MODE ) {
-				add_action( 'keyring_daily_digest_clickup_manage_ui', array( $this, 'basic_ui' ) );
-				add_filter( 'keyring_daily_digest_clickup_basic_ui_intro', array( $this, 'basic_ui_intro' ) );
+				add_action( 'keyring_daily_digest_clickup_oauth2_manage_ui', array( $this, 'basic_ui' ) );
+				add_filter( 'keyring_daily_digest_clickup_oauth2_basic_ui_intro', array( $this, 'basic_ui_intro' ) );
 			}
 
 			$this->set_endpoint( 'authorize', 'https://app.clickup.com/api', 'GET' );
@@ -42,9 +42,9 @@ if ( ! class_exists( 'Daily_Digest_Keyring_Service_Clickup' ) && class_exists( '
 			$this->authorization_header    = 'Bearer';
 			$this->authorization_parameter = false;
 
-			add_filter( 'keyring_daily_digest_clickup_verify_token_params', array( $this, 'verify_token_params' ) );
-			add_filter( 'keyring_daily_digest_clickup_verify_token_post_params', array( $this, 'verify_token_post_params' ) );
-			add_action( 'pre_keyring_daily_digest_clickup_verify', array( $this, 'redirect_incoming_verify' ) );
+			add_filter( 'keyring_daily_digest_clickup_oauth2_verify_token_params', array( $this, 'verify_token_params' ) );
+			add_filter( 'keyring_daily_digest_clickup_oauth2_verify_token_post_params', array( $this, 'verify_token_post_params' ) );
+			add_action( 'pre_keyring_daily_digest_clickup_oauth2_verify', array( $this, 'redirect_incoming_verify' ) );
 
 			// ClickUp callbacks should use a stable redirect URI.
 			$this->callback_url = remove_query_arg( array( 'nonce', 'kr_nonce' ), $this->callback_url );

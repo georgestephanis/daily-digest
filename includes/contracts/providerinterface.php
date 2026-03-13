@@ -28,7 +28,7 @@ interface ProviderInterface {
 	 * Returns the Keyring service name used to store tokens for this provider.
 	 *
 	 * Returns the provider slug by default. Override when the Keyring service
-	 * name differs (e.g. 'daily_digest_clickup' for the ClickUp provider).
+	 * name differs (e.g. 'daily_digest_clickup_oauth2' for the ClickUp provider).
 	 *
 	 * @return string
 	 */

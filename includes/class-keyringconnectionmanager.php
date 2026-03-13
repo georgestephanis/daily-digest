@@ -44,7 +44,7 @@ class KeyringConnectionManager {
 	 * hardcoded map in this class.
 	 *
 	 * @param string $provider_slug Provider slug (e.g. 'clickup').
-	 * @param string $service_name  Keyring service name (e.g. 'daily_digest_clickup').
+	 * @param string $service_name  Keyring service name (e.g. 'daily_digest_clickup_oauth2').
 	 *
 	 * @return void
 	 */

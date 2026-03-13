@@ -158,8 +158,9 @@ class AdminPage {
 	public function enqueue_admin_assets( string $hook_suffix ): void {
 		$is_overview_page = 'toplevel_page_daily-digest' === $hook_suffix;
 		$is_logs_page     = 'daily-digest_page_daily-digest-logs' === $hook_suffix;
+		$is_settings_page = 'daily-digest_page_daily-digest-settings' === $hook_suffix;
 
-		if ( ! $is_overview_page && ! $is_logs_page ) {
+		if ( ! $is_overview_page && ! $is_logs_page && ! $is_settings_page ) {
 			return;
 		}
 
@@ -173,14 +174,6 @@ class AdminPage {
 			return;
 		}
 
-		\wp_enqueue_script(
-			'daily-digest-overview',
-			DAILY_DIGEST_PLUGIN_URL . 'build/index.js',
-			$asset['dependencies'] ?? array(),
-			$asset['version'] ?? DAILY_DIGEST_PLUGIN_VERSION,
-			true
-		);
-
 		$styles_file = DAILY_DIGEST_PLUGIN_PATH . 'build/style-index.css';
 		if ( \file_exists( $styles_file ) ) {
 			\wp_enqueue_style(
@@ -190,6 +183,18 @@ class AdminPage {
 				$asset['version'] ?? DAILY_DIGEST_PLUGIN_VERSION
 			);
 		}
+
+		if ( $is_settings_page ) {
+			return;
+		}
+
+		\wp_enqueue_script(
+			'daily-digest-overview',
+			DAILY_DIGEST_PLUGIN_URL . 'build/index.js',
+			$asset['dependencies'] ?? array(),
+			$asset['version'] ?? DAILY_DIGEST_PLUGIN_VERSION,
+			true
+		);
 
 		if ( $is_overview_page ) {
 			// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only filter input used only for app initialization.
@@ -273,10 +278,19 @@ class AdminPage {
 		?>
 		<div class="wrap">
 			<h1><?php \esc_html_e( 'Daily Digest Settings', 'daily-digest' ); ?></h1>
-			<p><?php \esc_html_e( 'Enable providers and connect each service through Keyring. Connection metadata is shown below.', 'daily-digest' ); ?></p>
+			<p><?php \esc_html_e( 'Enable providers with the toggle below. Detailed connection metadata is available on demand.', 'daily-digest' ); ?></p>
 			<?php if ( ! $keyring_ready ) : ?>
 				<div class="notice notice-warning inline"><p><?php \esc_html_e( 'Keyring is not available. Provider connections cannot be created.', 'daily-digest' ); ?></p></div>
 			<?php endif; ?>
+			<p class="description">
+				<?php
+				printf(
+					/* translators: %s: URL to Keyring management page. */
+					\wp_kses_post( __( 'Manage connections in <a href="%s">Keyring</a>.', 'daily-digest' ) ),
+					\esc_url( \admin_url( 'tools.php?page=keyring' ) )
+				);
+				?>
+			</p>
 
 			<form method="post" id="daily-digest-settings-form">
 				<?php \wp_nonce_field( 'daily_digest_save_settings', 'daily_digest_nonce' ); ?>
@@ -290,18 +304,16 @@ class AdminPage {
 							$fields            = $provider_settings['fields'] ?? array();
 							$connected         = $this->keyring_connections->has_connection( $slug, $current_user_id );
 							$connection_meta   = $this->keyring_connections->get_connection_meta_for_user( $slug, $current_user_id );
-							$connect_url       = $this->keyring_connections->get_connect_url( $slug );
-							$manage_url        = $this->keyring_connections->get_manage_url( $slug );
-							$configure_url     = $this->keyring_connections->get_configure_url( $slug );
 							$service_exists    = $this->keyring_connections->has_service( $slug );
 							$service_ready     = $this->keyring_connections->is_service_configured( $slug );
 							$can_test_provider = $service_exists && $service_ready;
+							$meta_summary      = $this->get_connection_meta_summary( $slug, $connection_meta );
 							?>
 							<tr data-provider="<?php echo \esc_attr( $slug ); ?>">
 								<th scope="row"><?php echo \esc_html( $provider->get_name() ); ?></th>
 								<td>
 									<label>
-										<input type="checkbox" name="daily_digest_settings[<?php echo \esc_attr( $slug ); ?>][enabled]" value="1" <?php \checked( $enabled ); ?> />
+										<input type="checkbox" class="daily-digest-provider-toggle" name="daily_digest_settings[<?php echo \esc_attr( $slug ); ?>][enabled]" value="1" <?php \checked( $enabled ); ?> />
 										<?php \esc_html_e( 'Enable provider', 'daily-digest' ); ?>
 									</label>
 									<?php foreach ( $provider->get_fields() as $field_key => $field_label ) : ?>
@@ -317,48 +329,25 @@ class AdminPage {
 										<?php echo $connected ? \esc_html__( 'Connected via Keyring', 'daily-digest' ) : \esc_html__( 'Not connected', 'daily-digest' ); ?>
 									</p>
 									<?php if ( $connected ) : ?>
-										<p>
-											<strong><?php \esc_html_e( 'Connection Metadata:', 'daily-digest' ); ?></strong><br />
-											<?php echo wp_kses_post( $this->render_connection_meta( $slug, $connection_meta ) ); ?>
+										<p class="description">
+											<?php
+											/* translators: %s is a short connected-account summary, such as username/team. */
+											echo \esc_html( sprintf( __( 'Connected as %s.', 'daily-digest' ), $meta_summary ) );
+											?>
 										</p>
+										<details>
+											<summary><?php \esc_html_e( 'View connection details', 'daily-digest' ); ?></summary>
+											<p><?php echo wp_kses_post( $this->render_connection_meta( $slug, $connection_meta ) ); ?></p>
+										</details>
 									<?php endif; ?>
-									<?php if ( ! empty( $connect_url ) ) : ?>
-										<p>
-											<?php if ( $service_exists && $service_ready ) : ?>
-												<a class="button" href="<?php echo \esc_url( $connect_url ); ?>">
-													<?php \esc_html_e( 'Connect via Keyring', 'daily-digest' ); ?>
-												</a>
-											<?php else : ?>
-												<span class="button disabled" aria-disabled="true">
-													<?php \esc_html_e( 'Connect via Keyring', 'daily-digest' ); ?>
-												</span>
-											<?php endif; ?>
-											<?php if ( ! empty( $manage_url ) ) : ?>
-												<a class="button button-secondary" href="<?php echo \esc_url( $manage_url ); ?>">
-													<?php \esc_html_e( 'Manage in Keyring', 'daily-digest' ); ?>
-												</a>
-											<?php endif; ?>
-											<?php if ( $connected ) : ?>
-												<button type="button" class="button button-link-delete daily-digest-disconnect-provider" data-provider="<?php echo \esc_attr( $slug ); ?>">
-													<?php \esc_html_e( 'Disconnect', 'daily-digest' ); ?>
-												</button>
-											<?php endif; ?>
+									<?php if ( $service_exists && ! $service_ready ) : ?>
+										<p class="description">
+											<?php \esc_html_e( 'Keyring credentials are not configured for this provider yet.', 'daily-digest' ); ?>
 										</p>
-										<?php if ( $service_exists && ! $service_ready ) : ?>
-											<p class="description">
-												<?php \esc_html_e( 'Keyring credentials are not configured for this provider yet.', 'daily-digest' ); ?>
-												<?php if ( ! empty( $configure_url ) ) : ?>
-													<a href="<?php echo \esc_url( $configure_url ); ?>"><?php \esc_html_e( 'Configure in Keyring', 'daily-digest' ); ?></a>
-												<?php endif; ?>
-											</p>
-										<?php endif; ?>
 									<?php endif; ?>
 									<p>
 										<button type="button" class="button button-secondary daily-digest-test-credentials" data-provider="<?php echo \esc_attr( $slug ); ?>" data-keyring-configured="<?php echo $can_test_provider ? '1' : '0'; ?>" <?php echo $can_test_provider ? '' : 'disabled="disabled" aria-disabled="true"'; ?>>
 											<?php \esc_html_e( 'Test Connection', 'daily-digest' ); ?>
-										</button>
-										<button type="button" class="button button-primary daily-digest-save-credentials" data-provider="<?php echo \esc_attr( $slug ); ?>" data-keyring-configured="<?php echo $can_test_provider ? '1' : '0'; ?>" <?php echo $can_test_provider ? '' : 'disabled="disabled" aria-disabled="true"'; ?>>
-											<?php \esc_html_e( 'Save Provider', 'daily-digest' ); ?>
 										</button>
 										<span class="daily-digest-test-result" id="daily-digest-test-result-<?php echo \esc_attr( $slug ); ?>" style="margin-left:8px;"></span>
 										<span class="daily-digest-save-result" id="daily-digest-save-result-<?php echo \esc_attr( $slug ); ?>" style="margin-left:8px;"></span>
@@ -368,8 +357,6 @@ class AdminPage {
 						<?php endforeach; ?>
 					</tbody>
 				</table>
-
-				<?php \submit_button( \__( 'Save Settings', 'daily-digest' ) ); ?>
 			</form>
 		</div>
 		<script>
@@ -377,8 +364,7 @@ class AdminPage {
 			const restRoot = <?php echo \wp_json_encode( $rest_root ); ?>;
 			const restNonce = <?php echo \wp_json_encode( $nonce ); ?>;
 			const buttons = document.querySelectorAll('.daily-digest-test-credentials');
-			const saveButtons = document.querySelectorAll('.daily-digest-save-credentials');
-			const disconnectButtons = document.querySelectorAll('.daily-digest-disconnect-provider');
+			const providerToggles = document.querySelectorAll('.daily-digest-provider-toggle');
 
 			const setResult = (provider, text, ok) => {
 				const el = document.getElementById(`daily-digest-test-result-${provider}`);
@@ -412,6 +398,41 @@ class AdminPage {
 				}
 				el.textContent = text;
 				el.style.color = ok ? '#0a7d18' : '#b32d2e';
+			};
+
+			const saveProviderState = async (provider) => {
+				if (!provider) {
+					return;
+				}
+
+				setSaveResult(provider, <?php echo \wp_json_encode( __( 'Saving…', 'daily-digest' ) ); ?>, true);
+
+				const response = await fetch(`${restRoot}/providers/${encodeURIComponent(provider)}/credentials`, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						'X-WP-Nonce': restNonce,
+					},
+					body: JSON.stringify({
+						fields: collectProviderFields(provider),
+						enabled: collectProviderEnabled(provider),
+					})
+				});
+
+				let payload = null;
+				try {
+					payload = await response.json();
+				} catch (e) {
+					payload = null;
+				}
+
+				if (!response.ok || !payload || !payload.success) {
+					const message = payload && payload.message ? payload.message : <?php echo \wp_json_encode( __( 'Unable to save provider settings.', 'daily-digest' ) ); ?>;
+					setSaveResult(provider, message, false);
+					return;
+				}
+
+				setSaveResult(provider, payload.message || <?php echo \wp_json_encode( __( 'Provider settings saved.', 'daily-digest' ) ); ?>, true);
 			};
 
 			buttons.forEach((button) => {
@@ -453,85 +474,11 @@ class AdminPage {
 				});
 			});
 
-			saveButtons.forEach((button) => {
-				button.addEventListener('click', async () => {
-					if (button.disabled || button.getAttribute('data-keyring-configured') !== '1') {
-						return;
-					}
-
-					const provider = button.getAttribute('data-provider') || '';
-					if (!provider) {
-						return;
-					}
-
-					button.disabled = true;
-					setSaveResult(provider, <?php echo \wp_json_encode( __( 'Saving…', 'daily-digest' ) ); ?>, true);
-
-					const response = await fetch(`${restRoot}/providers/${encodeURIComponent(provider)}/credentials`, {
-						method: 'POST',
-						headers: {
-							'Content-Type': 'application/json',
-							'X-WP-Nonce': restNonce,
-						},
-						body: JSON.stringify({
-							fields: collectProviderFields(provider),
-							enabled: collectProviderEnabled(provider),
-						})
-					});
-
-					let payload = null;
-					try {
-						payload = await response.json();
-					} catch (e) {
-						payload = null;
-					}
-
-					if (!response.ok || !payload || !payload.success) {
-						const message = payload && payload.message ? payload.message : <?php echo \wp_json_encode( __( 'Unable to save provider credentials.', 'daily-digest' ) ); ?>;
-						setSaveResult(provider, message, false);
-						button.disabled = false;
-						return;
-					}
-
-					setSaveResult(provider, payload.message || <?php echo \wp_json_encode( __( 'Provider credentials saved.', 'daily-digest' ) ); ?>, true);
-					button.disabled = false;
-				});
-			});
-
-			disconnectButtons.forEach((button) => {
-				button.addEventListener('click', async () => {
-					const provider = button.getAttribute('data-provider') || '';
-					if (!provider) {
-						return;
-					}
-
-					button.disabled = true;
-					setSaveResult(provider, <?php echo \wp_json_encode( __( 'Disconnecting…', 'daily-digest' ) ); ?>, true);
-
-					const response = await fetch(`${restRoot}/providers/${encodeURIComponent(provider)}/disconnect`, {
-						method: 'POST',
-						headers: {
-							'Content-Type': 'application/json',
-							'X-WP-Nonce': restNonce,
-						}
-					});
-
-					let payload = null;
-					try {
-						payload = await response.json();
-					} catch (e) {
-						payload = null;
-					}
-
-					if (!response.ok || !payload || !payload.success) {
-						const message = payload && payload.message ? payload.message : <?php echo \wp_json_encode( __( 'Unable to disconnect provider.', 'daily-digest' ) ); ?>;
-						setSaveResult(provider, message, false);
-						button.disabled = false;
-						return;
-					}
-
-					setSaveResult(provider, payload.message || <?php echo \wp_json_encode( __( 'Provider disconnected.', 'daily-digest' ) ); ?>, true);
-					window.location.reload();
+			providerToggles.forEach((toggle) => {
+				toggle.addEventListener('change', async () => {
+					const row = toggle.closest('tr[data-provider]');
+					const provider = row ? (row.getAttribute('data-provider') || '') : '';
+					await saveProviderState(provider);
 				});
 			});
 		})();
@@ -629,6 +576,41 @@ class AdminPage {
 		}
 
 		return implode( '<br />', $lines );
+	}
+
+	/**
+	 * Returns a short summary string for connected account metadata.
+	 *
+	 * @param string               $provider_slug Provider slug.
+	 * @param array<string, mixed> $meta          Raw token metadata.
+	 *
+	 * @return string
+	 */
+	private function get_connection_meta_summary( string $provider_slug, array $meta ): string {
+		if ( empty( $meta ) ) {
+			return __( 'an unknown account', 'daily-digest' );
+		}
+
+		$priority_keys = array(
+			'github'  => array( 'name', 'username', 'profile_url' ),
+			'clickup' => array( 'name', 'username', 'team_names', 'user_id' ),
+			'slack'   => array( 'name', 'team', 'team_domain', 'user_id' ),
+		);
+
+		$keys = $priority_keys[ $provider_slug ] ?? array( 'name', 'username', 'user_id' );
+
+		foreach ( $keys as $key ) {
+			if ( ! array_key_exists( $key, $meta ) ) {
+				continue;
+			}
+
+			$value = $this->format_connection_meta_value( $meta[ $key ] );
+			if ( '' !== $value ) {
+				return $value;
+			}
+		}
+
+		return __( 'an unknown account', 'daily-digest' );
 	}
 
 	/**

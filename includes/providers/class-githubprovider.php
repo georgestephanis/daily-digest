@@ -9,8 +9,7 @@ declare(strict_types=1);
 
 namespace DailyDigest\Providers;
 
-use DailyDigest\Contracts\ProviderInterface;
-use DailyDigest\KeyringConnectionManager;
+use DailyDigest\AbstractProvider;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -19,23 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * GitHub provider adapter.
  */
-class GithubProvider implements ProviderInterface {
-	/**
-	 * Keyring connection manager.
-	 *
-	 * @var KeyringConnectionManager
-	 */
-	private KeyringConnectionManager $keyring_connections;
-
-	/**
-	 * Constructor.
-	 *
-	 * @param KeyringConnectionManager|null $keyring_connections Keyring connection manager.
-	 */
-	public function __construct( ?KeyringConnectionManager $keyring_connections = null ) {
-		$this->keyring_connections = $keyring_connections ?? new KeyringConnectionManager();
-	}
-
+class GithubProvider extends AbstractProvider {
 	/**
 	 * Returns provider slug.
 	 *
@@ -55,15 +38,6 @@ class GithubProvider implements ProviderInterface {
 	}
 
 	/**
-	 * Returns provider settings fields.
-	 *
-	 * @return array
-	 */
-	public function get_fields(): array {
-		return array();
-	}
-
-	/**
 	 * Tests GitHub credentials.
 	 *
 	 * @param array $provider_fields Provider field values.
@@ -71,8 +45,8 @@ class GithubProvider implements ProviderInterface {
 	 * @return array{success:bool,message:string,details?:array}
 	 */
 	public function test_credentials( array $provider_fields ): array {
-		$token    = $this->keyring_connections->get_access_token_string( 'github', \get_current_user_id() );
-		$username = (string) $this->keyring_connections->get_connection_meta_for_user( 'github', \get_current_user_id(), 'username' );
+		$token    = $this->get_token( \get_current_user_id() );
+		$username = (string) $this->get_token_meta( \get_current_user_id(), 'username' );
 
 		if ( empty( $token ) ) {
 			return array(
@@ -81,10 +55,9 @@ class GithubProvider implements ProviderInterface {
 			);
 		}
 
-		$response = \wp_remote_get(
+		$response = $this->http_get(
 			'https://api.github.com/user',
 			array(
-				'timeout' => 15,
 				'headers' => array(
 					'Accept'               => 'application/vnd.github+json',
 					'Authorization'        => 'Bearer ' . $token,
@@ -167,19 +140,20 @@ class GithubProvider implements ProviderInterface {
 	/**
 	 * Fetches notifications from GitHub API.
 	 *
+	 * @param int   $user_id User ID.
 	 * @param array $fields  Provider field values.
 	 * @param array $options Digest options.
 	 *
 	 * @return array
 	 */
 	private function fetch_notifications( int $user_id, array $fields, array $options ): array {
-		$token = $this->keyring_connections->get_access_token_string( 'github', $user_id );
+		$token = $this->get_token( $user_id );
 
 		if ( empty( $token ) ) {
 			return array();
 		}
 
-		$username = (string) $this->keyring_connections->get_connection_meta_for_user( 'github', $user_id, 'username' );
+		$username = (string) $this->get_token_meta( $user_id, 'username' );
 		$days     = isset( $options['days'] ) ? \max( 1, \absint( $options['days'] ) ) : 1;
 		$since    = \gmdate( 'c', \strtotime( '-' . $days . ' days' ) );
 
@@ -206,13 +180,7 @@ class GithubProvider implements ProviderInterface {
 				$base_url
 			);
 
-			$response = \wp_remote_get(
-				$request_url,
-				array(
-					'timeout' => 15,
-					'headers' => $headers,
-				)
-			);
+			$response = $this->http_get( $request_url, array( 'headers' => $headers ) );
 
 			if ( \is_wp_error( $response ) ) {
 				break;
@@ -323,31 +291,5 @@ class GithubProvider implements ProviderInterface {
 		}
 
 		return '';
-	}
-
-	/**
-	 * Applies day-window filtering to activity items.
-	 *
-	 * @param array $items   Activity items.
-	 * @param array $options Query options.
-	 *
-	 * @return array
-	 */
-	private function apply_time_window( array $items, array $options ): array {
-		$days      = isset( $options['days'] ) ? \max( 1, \absint( $options['days'] ) ) : 1;
-		$threshold = \strtotime( '-' . $days . ' days' );
-
-		return \array_values(
-			\array_filter(
-				$items,
-				static function ( array $item ) use ( $threshold ): bool {
-					if ( empty( $item['timestamp'] ) ) {
-						return false;
-					}
-
-					return \strtotime( (string) $item['timestamp'] ) >= $threshold;
-				}
-			)
-		);
 	}
 }

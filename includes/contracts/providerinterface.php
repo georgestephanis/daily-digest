@@ -25,6 +25,16 @@ interface ProviderInterface {
 	public function get_slug(): string;
 
 	/**
+	 * Returns the Keyring service name used to store tokens for this provider.
+	 *
+	 * Returns the provider slug by default. Override when the Keyring service
+	 * name differs (e.g. 'daily_digest_clickup' for the ClickUp provider).
+	 *
+	 * @return string
+	 */
+	public function get_keyring_service_name(): string;
+
+	/**
 	 * Returns provider display name.
 	 *
 	 * @return string

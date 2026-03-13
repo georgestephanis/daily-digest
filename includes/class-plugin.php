@@ -125,10 +125,28 @@ class Plugin {
 		 */
 		\do_action( 'daily_digest_register_providers', $this->provider_registry );
 
+		$this->register_provider_keyring_services();
+
 		$this->api_logger->register_hooks();
 		$this->rest_controller->register();
 		$this->admin_page->register();
 		$this->booted = true;
+	}
+
+	/**
+	 * Registers each provider's Keyring service name with the connection manager.
+	 *
+	 * Called after all providers (built-in and external) have been registered so
+	 * every provider can declare its own service name rather than relying on a
+	 * hardcoded map in KeyringConnectionManager.
+	 */
+	private function register_provider_keyring_services(): void {
+		foreach ( $this->provider_registry->all() as $provider ) {
+			$this->keyring_connections->register_service(
+				$provider->get_slug(),
+				$provider->get_keyring_service_name()
+			);
+		}
 	}
 
 	/**

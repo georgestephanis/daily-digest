@@ -9,8 +9,7 @@ declare(strict_types=1);
 
 namespace DailyDigest\Providers;
 
-use DailyDigest\Contracts\ProviderInterface;
-use DailyDigest\KeyringConnectionManager;
+use DailyDigest\AbstractProvider;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -19,23 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Slack provider adapter.
  */
-class SlackProvider implements ProviderInterface {
-	/**
-	 * Keyring connection manager.
-	 *
-	 * @var KeyringConnectionManager
-	 */
-	private KeyringConnectionManager $keyring_connections;
-
-	/**
-	 * Constructor.
-	 *
-	 * @param KeyringConnectionManager|null $keyring_connections Keyring connection manager.
-	 */
-	public function __construct( ?KeyringConnectionManager $keyring_connections = null ) {
-		$this->keyring_connections = $keyring_connections ?? new KeyringConnectionManager();
-	}
-
+class SlackProvider extends AbstractProvider {
 	/**
 	 * Returns provider slug.
 	 *
@@ -55,12 +38,12 @@ class SlackProvider implements ProviderInterface {
 	}
 
 	/**
-	 * Returns provider settings fields.
+	 * Returns the Keyring service name for Slack.
 	 *
-	 * @return array
+	 * @return string
 	 */
-	public function get_fields(): array {
-		return array();
+	public function get_keyring_service_name(): string {
+		return 'daily_digest_slack';
 	}
 
 	/**
@@ -71,7 +54,7 @@ class SlackProvider implements ProviderInterface {
 	 * @return array{success:bool,message:string,details?:array}
 	 */
 	public function test_credentials( array $provider_fields ): array {
-		$token = $this->keyring_connections->get_access_token_string( 'slack', \get_current_user_id() );
+		$token = $this->get_token( \get_current_user_id() );
 
 		if ( empty( $token ) ) {
 			return array(
@@ -80,10 +63,9 @@ class SlackProvider implements ProviderInterface {
 			);
 		}
 
-		$response = \wp_remote_get(
+		$response = $this->http_get(
 			'https://slack.com/api/auth.test',
 			array(
-				'timeout' => 15,
 				'headers' => array(
 					'Authorization' => 'Bearer ' . $token,
 				),
@@ -170,13 +152,14 @@ class SlackProvider implements ProviderInterface {
 	/**
 	 * Fetches Slack notification-like activity and own comments via search API.
 	 *
+	 * @param int   $user_id User ID.
 	 * @param array $fields  Provider field values.
 	 * @param array $options Digest options.
 	 *
 	 * @return array
 	 */
 	private function fetch_notification_items( int $user_id, array $fields, array $options ): array {
-		$token      = $this->keyring_connections->get_access_token_string( 'slack', $user_id );
+		$token      = $this->get_token( $user_id );
 		$context    = $this->resolve_slack_context( $user_id, $token );
 		$workspace  = $context['workspace'];
 		$slack_user = $context['slack_user'];
@@ -249,8 +232,8 @@ class SlackProvider implements ProviderInterface {
 	 * @return array{workspace:string,slack_user:string}
 	 */
 	private function resolve_slack_context( int $user_id, string $token ): array {
-		$workspace  = (string) $this->keyring_connections->get_connection_meta_for_user( 'slack', $user_id, 'team_domain' );
-		$slack_user = (string) $this->keyring_connections->get_connection_meta_for_user( 'slack', $user_id, 'user_id' );
+		$workspace  = (string) $this->get_token_meta( $user_id, 'team_domain' );
+		$slack_user = (string) $this->get_token_meta( $user_id, 'user_id' );
 
 		if ( ! empty( $workspace ) && ! empty( $slack_user ) ) {
 			return array(
@@ -334,8 +317,8 @@ class SlackProvider implements ProviderInterface {
 	 * Maps Slack search match payload to digest item.
 	 *
 	 * @param array  $search_item Slack search result item.
-	 * @param string $query_type Query type label.
-	 * @param string $workspace  Slack workspace subdomain.
+	 * @param string $query_type  Query type label.
+	 * @param string $workspace   Slack workspace subdomain.
 	 *
 	 * @return array
 	 */
@@ -396,10 +379,9 @@ class SlackProvider implements ProviderInterface {
 	 */
 	private function call_api_method( string $method, array $params, string $token ): ?array {
 		$request_url = \add_query_arg( $params, 'https://slack.com/api/' . $method );
-		$response    = \wp_remote_get(
+		$response    = $this->http_get(
 			$request_url,
 			array(
-				'timeout' => 15,
 				'headers' => array(
 					'Authorization' => 'Bearer ' . $token,
 				),
@@ -444,31 +426,5 @@ class SlackProvider implements ProviderInterface {
 		}
 
 		return sprintf( 'https://%s.slack.com/archives/%s/p%s', $workspace, $channel_id, $clean_ts );
-	}
-
-	/**
-	 * Applies day-window filtering to activity items.
-	 *
-	 * @param array $items   Activity items.
-	 * @param array $options Query options.
-	 *
-	 * @return array
-	 */
-	private function apply_time_window( array $items, array $options ): array {
-		$days      = isset( $options['days'] ) ? \max( 1, \absint( $options['days'] ) ) : 1;
-		$threshold = \strtotime( '-' . $days . ' days' );
-
-		return \array_values(
-			\array_filter(
-				$items,
-				static function ( array $item ) use ( $threshold ): bool {
-					if ( empty( $item['timestamp'] ) ) {
-						return false;
-					}
-
-					return \strtotime( (string) $item['timestamp'] ) >= $threshold;
-				}
-			)
-		);
 	}
 }

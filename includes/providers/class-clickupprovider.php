@@ -9,8 +9,7 @@ declare(strict_types=1);
 
 namespace DailyDigest\Providers;
 
-use DailyDigest\Contracts\ProviderInterface;
-use DailyDigest\KeyringConnectionManager;
+use DailyDigest\AbstractProvider;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -19,23 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * ClickUp provider adapter.
  */
-class ClickupProvider implements ProviderInterface {
-	/**
-	 * Keyring connection manager.
-	 *
-	 * @var KeyringConnectionManager
-	 */
-	private KeyringConnectionManager $keyring_connections;
-
-	/**
-	 * Constructor.
-	 *
-	 * @param KeyringConnectionManager|null $keyring_connections Keyring connection manager.
-	 */
-	public function __construct( ?KeyringConnectionManager $keyring_connections = null ) {
-		$this->keyring_connections = $keyring_connections ?? new KeyringConnectionManager();
-	}
-
+class ClickupProvider extends AbstractProvider {
 	/**
 	 * Returns provider slug.
 	 *
@@ -55,12 +38,12 @@ class ClickupProvider implements ProviderInterface {
 	}
 
 	/**
-	 * Returns provider settings fields.
+	 * Returns the Keyring service name for ClickUp.
 	 *
-	 * @return array
+	 * @return string
 	 */
-	public function get_fields(): array {
-		return array();
+	public function get_keyring_service_name(): string {
+		return 'daily_digest_clickup';
 	}
 
 	/**
@@ -71,7 +54,7 @@ class ClickupProvider implements ProviderInterface {
 	 * @return array{success:bool,message:string,details?:array}
 	 */
 	public function test_credentials( array $provider_fields ): array {
-		$token = $this->keyring_connections->get_access_token_string( 'clickup', \get_current_user_id() );
+		$token = $this->get_token( \get_current_user_id() );
 
 		if ( empty( $token ) ) {
 			return array(
@@ -80,10 +63,9 @@ class ClickupProvider implements ProviderInterface {
 			);
 		}
 
-		$response = \wp_remote_get(
+		$response = $this->http_get(
 			'https://api.clickup.com/api/v2/user',
 			array(
-				'timeout' => 15,
 				'headers' => array(
 					'Authorization' => 'Bearer ' . $token,
 				),
@@ -154,13 +136,14 @@ class ClickupProvider implements ProviderInterface {
 	/**
 	 * Fetches recently updated tasks from ClickUp.
 	 *
+	 * @param int   $user_id User ID.
 	 * @param array $fields  Provider field values.
 	 * @param array $options Digest options.
 	 *
 	 * @return array
 	 */
 	private function fetch_tasks( int $user_id, array $fields, array $options ): array {
-		$token = $this->keyring_connections->get_access_token_string( 'clickup', $user_id );
+		$token = $this->get_token( $user_id );
 
 		if ( empty( $token ) ) {
 			return array();
@@ -191,10 +174,9 @@ class ClickupProvider implements ProviderInterface {
 					$base_url
 				);
 
-				$response = \wp_remote_get(
+				$response = $this->http_get(
 					$request_url,
 					array(
-						'timeout' => 15,
 						'headers' => array(
 							'Authorization' => 'Bearer ' . $token,
 						),
@@ -253,7 +235,7 @@ class ClickupProvider implements ProviderInterface {
 	 * @return array<int, string>
 	 */
 	private function resolve_team_ids( int $user_id, string $token ): array {
-		$team_ids = $this->keyring_connections->get_connection_meta_for_user( 'clickup', $user_id, 'team_ids' );
+		$team_ids = $this->get_token_meta( $user_id, 'team_ids' );
 
 		if ( \is_array( $team_ids ) && ! empty( $team_ids ) ) {
 			return \array_values(
@@ -266,15 +248,14 @@ class ClickupProvider implements ProviderInterface {
 			);
 		}
 
-		$default_team_id = $this->keyring_connections->get_connection_meta_for_user( 'clickup', $user_id, 'default_team_id' );
+		$default_team_id = $this->get_token_meta( $user_id, 'default_team_id' );
 		if ( \is_string( $default_team_id ) && '' !== \trim( $default_team_id ) ) {
 			return array( \trim( $default_team_id ) );
 		}
 
-		$response = \wp_remote_get(
+		$response = $this->http_get(
 			'https://api.clickup.com/api/v2/team',
 			array(
-				'timeout' => 15,
 				'headers' => array(
 					'Authorization' => 'Bearer ' . $token,
 				),
@@ -339,32 +320,6 @@ class ClickupProvider implements ProviderInterface {
 			'summary'   => \implode( ' • ', $summary_parts ),
 			'url'       => $url,
 			'raw'       => $task,
-		);
-	}
-
-	/**
-	 * Applies day-window filtering to activity items.
-	 *
-	 * @param array $items   Activity items.
-	 * @param array $options Query options.
-	 *
-	 * @return array
-	 */
-	private function apply_time_window( array $items, array $options ): array {
-		$days      = isset( $options['days'] ) ? \max( 1, \absint( $options['days'] ) ) : 1;
-		$threshold = \strtotime( '-' . $days . ' days' );
-
-		return \array_values(
-			\array_filter(
-				$items,
-				static function ( array $item ) use ( $threshold ): bool {
-					if ( empty( $item['timestamp'] ) ) {
-						return false;
-					}
-
-					return \strtotime( (string) $item['timestamp'] ) >= $threshold;
-				}
-			)
 		);
 	}
 }

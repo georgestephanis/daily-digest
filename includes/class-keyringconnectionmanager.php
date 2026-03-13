@@ -18,15 +18,14 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class KeyringConnectionManager {
 	/**
-	 * Maps provider slugs to custom Keyring service names.
+	 * Maps provider slugs to Keyring service names.
+	 *
+	 * Populated at boot time via register_service() so that each provider
+	 * owns its own Keyring service name declaration.
 	 *
 	 * @var array<string, string>
 	 */
-	private array $service_map = array(
-		'github'  => 'github',
-		'clickup' => 'daily_digest_clickup',
-		'slack'   => 'daily_digest_slack',
-	);
+	private array $service_map = array();
 
 	/**
 	 * Checks if Keyring is loaded.
@@ -35,6 +34,22 @@ class KeyringConnectionManager {
 	 */
 	public function is_available(): bool {
 		return \class_exists( '\\Keyring' ) && \class_exists( '\\Keyring_Util' );
+	}
+
+	/**
+	 * Registers a provider's Keyring service name.
+	 *
+	 * Called during plugin boot after all providers are registered so that
+	 * providers declare their own service names rather than requiring a
+	 * hardcoded map in this class.
+	 *
+	 * @param string $provider_slug Provider slug (e.g. 'clickup').
+	 * @param string $service_name  Keyring service name (e.g. 'daily_digest_clickup').
+	 *
+	 * @return void
+	 */
+	public function register_service( string $provider_slug, string $service_name ): void {
+		$this->service_map[ $provider_slug ] = $service_name;
 	}
 
 	/**

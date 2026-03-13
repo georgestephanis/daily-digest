@@ -47,6 +47,9 @@ class DigestService {
 	/**
 	 * Returns digest items for a user.
 	 *
+	 * Provider results are cached in transients (15 minutes) to avoid hammering
+	 * external APIs on every page load.
+	 *
 	 * @param int   $user_id User ID.
 	 * @param array $options Query options.
 	 *
@@ -55,6 +58,7 @@ class DigestService {
 	public function get_digest_for_user( int $user_id, array $options = array() ): array {
 		$all_provider_settings = $this->user_settings->get_for_user( $user_id );
 		$digest_items          = array();
+		$days                  = isset( $options['days'] ) ? \max( 1, \absint( $options['days'] ) ) : 1;
 
 		foreach ( $this->provider_registry->all() as $slug => $provider ) {
 			$provider_settings = $all_provider_settings[ $slug ] ?? array();
@@ -62,12 +66,18 @@ class DigestService {
 				continue;
 			}
 
-			$provider_items = ProviderExecutionContext::run_with_provider(
-				(string) $slug,
-				static function () use ( $provider, $user_id, $provider_settings, $options ): array {
-					return $provider->fetch_activity( $user_id, $provider_settings, $options );
-				}
-			);
+			$cache_key      = 'dd_cache_' . $user_id . '_' . $slug . '_' . $days;
+			$provider_items = \get_transient( $cache_key );
+
+			if ( false === $provider_items ) {
+				$provider_items = ProviderExecutionContext::run_with_provider(
+					(string) $slug,
+					static function () use ( $provider, $user_id, $provider_settings, $options ): array {
+						return $provider->fetch_activity( $user_id, $provider_settings, $options );
+					}
+				);
+				\set_transient( $cache_key, $provider_items, 15 * MINUTE_IN_SECONDS );
+			}
 
 			foreach ( $provider_items as $item ) {
 				$normalized = $this->normalize_item( $item, $provider );
@@ -85,6 +95,23 @@ class DigestService {
 		);
 
 		return $digest_items;
+	}
+
+	/**
+	 * Clears the activity cache for a provider and user.
+	 *
+	 * Called when a user disconnects a provider or saves new credentials to
+	 * ensure the next request reflects the updated connection state.
+	 *
+	 * @param int    $user_id       User ID.
+	 * @param string $provider_slug Provider slug.
+	 *
+	 * @return void
+	 */
+	public function clear_provider_cache( int $user_id, string $provider_slug ): void {
+		for ( $days = 1; $days <= 90; $days++ ) {
+			\delete_transient( 'dd_cache_' . $user_id . '_' . $provider_slug . '_' . $days );
+		}
 	}
 
 	/**
@@ -109,12 +136,19 @@ class DigestService {
 			return array();
 		}
 
-		$provider_items = ProviderExecutionContext::run_with_provider(
-			$provider_slug,
-			static function () use ( $provider, $user_id, $provider_settings, $options ): array {
-				return $provider->fetch_activity( $user_id, $provider_settings, $options );
-			}
-		);
+		$days           = isset( $options['days'] ) ? \max( 1, \absint( $options['days'] ) ) : 1;
+		$cache_key      = 'dd_cache_' . $user_id . '_' . $provider_slug . '_' . $days;
+		$provider_items = \get_transient( $cache_key );
+
+		if ( false === $provider_items ) {
+			$provider_items = ProviderExecutionContext::run_with_provider(
+				$provider_slug,
+				static function () use ( $provider, $user_id, $provider_settings, $options ): array {
+					return $provider->fetch_activity( $user_id, $provider_settings, $options );
+				}
+			);
+			\set_transient( $cache_key, $provider_items, 15 * MINUTE_IN_SECONDS );
+		}
 
 		$digest_items = array();
 		foreach ( $provider_items as $item ) {

@@ -361,18 +361,33 @@ class RestController {
 	/**
 	 * Gets combined digest data.
 	 *
+	 * The response includes a 'providers' map showing the connection health of
+	 * each registered provider so the UI can distinguish "no activity" from
+	 * "not connected".
+	 *
 	 * @param \WP_REST_Request $request REST request.
 	 *
 	 * @return \WP_REST_Response
 	 */
 	public function get_digest( \WP_REST_Request $request ): \WP_REST_Response {
-		$user_id = \get_current_user_id();
-		$days    = max( 1, (int) $request->get_param( 'days' ) );
-		$items   = $this->digest_service->get_digest_for_user( $user_id, array( 'days' => $days ) );
+		$user_id   = \get_current_user_id();
+		$days      = max( 1, (int) $request->get_param( 'days' ) );
+		$items     = $this->digest_service->get_digest_for_user( $user_id, array( 'days' => $days ) );
+		$providers = array();
+
+		foreach ( $this->provider_registry->all() as $slug => $provider ) {
+			$connected           = $this->keyring_connections->has_connection( (string) $slug, $user_id );
+			$providers[ $slug ] = array(
+				'name'      => $provider->get_name(),
+				'connected' => $connected,
+				'error'     => $connected ? null : __( 'No connection found. Connect this provider on the Settings page.', 'daily-digest' ),
+			);
+		}
 
 		return new \WP_REST_Response(
 			array(
-				'items' => $items,
+				'items'     => $items,
+				'providers' => $providers,
 			),
 			200
 		);
@@ -503,6 +518,7 @@ class RestController {
 		);
 
 		$this->user_settings->save_for_user( $user_id, $user_settings );
+		$this->digest_service->clear_provider_cache( $user_id, $provider_slug );
 
 		$response_data = array(
 			'success'  => true,
@@ -556,7 +572,9 @@ class RestController {
 			);
 		}
 
-		$deleted_count = $this->keyring_connections->disconnect_user( $provider_slug, \get_current_user_id() );
+		$user_id       = \get_current_user_id();
+		$deleted_count = $this->keyring_connections->disconnect_user( $provider_slug, $user_id );
+		$this->digest_service->clear_provider_cache( $user_id, $provider_slug );
 
 		return new \WP_REST_Response(
 			array(

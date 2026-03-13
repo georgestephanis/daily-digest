@@ -184,10 +184,6 @@ class AdminPage {
 			);
 		}
 
-		if ( $is_settings_page ) {
-			return;
-		}
-
 		\wp_enqueue_script(
 			'daily-digest-overview',
 			DAILY_DIGEST_PLUGIN_URL . 'build/index.js',
@@ -292,7 +288,7 @@ class AdminPage {
 				?>
 			</p>
 
-			<form method="post" id="daily-digest-settings-form">
+			<form method="post" id="daily-digest-settings-form" data-rest-root="<?php echo \esc_attr( $rest_root ); ?>" data-rest-nonce="<?php echo \esc_attr( $nonce ); ?>">
 				<?php \wp_nonce_field( 'daily_digest_save_settings', 'daily_digest_nonce' ); ?>
 				<table class="form-table" role="presentation">
 					<tbody>
@@ -359,158 +355,6 @@ class AdminPage {
 				</table>
 			</form>
 		</div>
-		<script>
-		(function() {
-			const restRoot = <?php echo \wp_json_encode( $rest_root ); ?>;
-			const restNonce = <?php echo \wp_json_encode( $nonce ); ?>;
-			const buttons = document.querySelectorAll('.daily-digest-test-credentials');
-			const providerToggles = document.querySelectorAll('.daily-digest-provider-toggle');
-			const messageTimers = new WeakMap();
-
-			const replaceMessage = (el, text, ok) => {
-				if (!el) {
-					return;
-				}
-
-				const existingTimer = messageTimers.get(el);
-				if (existingTimer) {
-					clearTimeout(existingTimer);
-					messageTimers.delete(el);
-				}
-
-				const applyNewMessage = () => {
-					el.textContent = text;
-					el.style.color = ok ? '#0a7d18' : '#b32d2e';
-					el.style.transition = 'opacity 140ms ease';
-					el.style.opacity = '0';
-					window.requestAnimationFrame(() => {
-						el.style.opacity = '1';
-					});
-				};
-
-				if ((el.textContent || '').trim() !== '') {
-					el.style.transition = 'opacity 110ms ease';
-					el.style.opacity = '0';
-					const timer = window.setTimeout(() => {
-						applyNewMessage();
-						messageTimers.delete(el);
-					}, 120);
-					messageTimers.set(el, timer);
-					return;
-				}
-
-				applyNewMessage();
-			};
-
-			const setResult = (provider, text, ok) => {
-				const el = document.getElementById(`daily-digest-test-result-${provider}`);
-				replaceMessage(el, text, ok);
-			};
-
-			const collectProviderFields = (provider) => {
-				const fields = {};
-				document.querySelectorAll(`input[name^="daily_digest_settings[${provider}][fields]"]`).forEach((input) => {
-					const match = input.name.match(/\[fields\]\[([^\]]+)\]/);
-					if (match && match[1]) {
-						fields[match[1]] = input.value;
-					}
-				});
-				return fields;
-			};
-
-			const collectProviderEnabled = (provider) => {
-				const input = document.querySelector(`input[name="daily_digest_settings[${provider}][enabled]"]`);
-				return !!(input && input.checked);
-			};
-
-			const setSaveResult = (provider, text, ok) => {
-				const el = document.getElementById(`daily-digest-save-result-${provider}`);
-				replaceMessage(el, text, ok);
-			};
-
-			const saveProviderState = async (provider) => {
-				if (!provider) {
-					return;
-				}
-
-				setSaveResult(provider, <?php echo \wp_json_encode( __( 'Saving…', 'daily-digest' ) ); ?>, true);
-
-				const response = await fetch(`${restRoot}/providers/${encodeURIComponent(provider)}/credentials`, {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-						'X-WP-Nonce': restNonce,
-					},
-					body: JSON.stringify({
-						fields: collectProviderFields(provider),
-						enabled: collectProviderEnabled(provider),
-					})
-				});
-
-				let payload = null;
-				try {
-					payload = await response.json();
-				} catch (e) {
-					payload = null;
-				}
-
-				if (!response.ok || !payload || !payload.success) {
-					const message = payload && payload.message ? payload.message : <?php echo \wp_json_encode( __( 'Unable to save provider settings.', 'daily-digest' ) ); ?>;
-					setSaveResult(provider, message, false);
-					return;
-				}
-
-				setSaveResult(provider, payload.message || <?php echo \wp_json_encode( __( 'Provider settings saved.', 'daily-digest' ) ); ?>, true);
-			};
-
-			buttons.forEach((button) => {
-				button.addEventListener('click', async () => {
-					if (button.disabled || button.getAttribute('data-keyring-configured') !== '1') {
-						return;
-					}
-
-					const provider = button.getAttribute('data-provider') || '';
-					if (!provider) {
-						return;
-					}
-
-					setResult(provider, <?php echo \wp_json_encode( __( 'Testing…', 'daily-digest' ) ); ?>, true);
-
-					const response = await fetch(`${restRoot}/providers/${encodeURIComponent(provider)}/test-credentials`, {
-						method: 'POST',
-						headers: {
-							'Content-Type': 'application/json',
-							'X-WP-Nonce': restNonce,
-						},
-						body: JSON.stringify({ fields: collectProviderFields(provider) })
-					});
-
-					let payload = null;
-					try {
-						payload = await response.json();
-					} catch (e) {
-						payload = null;
-					}
-
-					if (!response.ok || !payload || !payload.success) {
-						const message = payload && payload.message ? payload.message : <?php echo \wp_json_encode( __( 'Credential test failed.', 'daily-digest' ) ); ?>;
-						setResult(provider, message, false);
-						return;
-					}
-
-					setResult(provider, payload.message || <?php echo \wp_json_encode( __( 'Credentials are valid.', 'daily-digest' ) ); ?>, true);
-				});
-			});
-
-			providerToggles.forEach((toggle) => {
-				toggle.addEventListener('change', async () => {
-					const row = toggle.closest('tr[data-provider]');
-					const provider = row ? (row.getAttribute('data-provider') || '') : '';
-					await saveProviderState(provider);
-				});
-			});
-		})();
-		</script>
 		<?php
 	}
 

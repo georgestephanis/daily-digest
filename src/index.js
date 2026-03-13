@@ -10,6 +10,7 @@ import { __ } from '@wordpress/i18n';
 import { Button, Spinner } from '@wordpress/components';
 import { DataViews, filterSortAndPaginate } from '@wordpress/dataviews/wp';
 import { LogViewerApp } from './log-viewer-app';
+import { initSettingsPage } from './settings-page';
 import './style.scss';
 
 const defaultLayouts = {
@@ -334,4 +335,6 @@ domReady( () => {
 		const logViewerRoot = createRoot( logViewerTarget );
 		logViewerRoot.render( <LogViewerApp config={ logViewerConfig } /> );
 	}
+
+	initSettingsPage();
 } );

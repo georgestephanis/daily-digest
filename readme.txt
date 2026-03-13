@@ -50,8 +50,9 @@ Optional fields:
 Use the official provider docs for token/auth setup:
 
 * GitHub
-  * Personal access tokens: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens
-  * REST API auth: https://docs.github.com/en/rest/authentication/authenticating-to-the-rest-api
+  * Create OAuth app: https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app
+  * OAuth apps overview: https://docs.github.com/en/apps/oauth-apps
+  * OAuth app authorization: https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps
 * ClickUp
   * API auth: https://developer.clickup.com/docs/authentication
   * Personal token setup: https://help.clickup.com/hc/en-us/articles/6303426241687-Use-the-ClickUp-API

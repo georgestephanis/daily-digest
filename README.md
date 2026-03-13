@@ -29,8 +29,9 @@ Daily Digest is a WordPress plugin that aggregates per-user activity from multip
 
 ### GitHub
 
-- Personal Access Tokens: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens
-- REST API Authentication: https://docs.github.com/en/rest/authentication/authenticating-to-the-rest-api
+- Create OAuth App: https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app
+- OAuth Apps Overview: https://docs.github.com/en/apps/oauth-apps
+- Authorize OAuth Apps: https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps
 
 ### ClickUp
 

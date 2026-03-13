@@ -176,58 +176,6 @@ abstract class Daily_Digest_Keyring_Service_Base extends Keyring_Service {
 }
 
 /**
- * GitHub token provider for Daily Digest.
- */
-class Daily_Digest_Keyring_Service_Github extends Daily_Digest_Keyring_Service_Base {
-	const NAME  = 'daily_digest_github';
-	const LABEL = 'Daily Digest GitHub';
-
-	protected function get_token_help_text() {
-		return __( 'Paste a GitHub personal access token with notification access.', 'daily-digest' );
-	}
-
-	protected function verify_access_token( $token ) {
-		$response = wp_remote_get(
-			'https://api.github.com/user',
-			array(
-				'timeout' => 15,
-				'headers' => array(
-					'Accept'               => 'application/vnd.github+json',
-					'Authorization'        => 'Bearer ' . $token,
-					'X-GitHub-Api-Version' => '2022-11-28',
-					'User-Agent'           => 'DailyDigestWP/' . DAILY_DIGEST_PLUGIN_VERSION,
-				),
-			)
-		);
-
-		if ( is_wp_error( $response ) ) {
-			return array(
-				'success' => false,
-				'message' => $response->get_error_message(),
-			);
-		}
-
-		$payload = json_decode( (string) wp_remote_retrieve_body( $response ), true );
-		if ( (int) wp_remote_retrieve_response_code( $response ) !== 200 || ! is_array( $payload ) || empty( $payload['login'] ) ) {
-			return array(
-				'success' => false,
-				'message' => __( 'GitHub token verification failed.', 'daily-digest' ),
-			);
-		}
-
-		return array(
-			'success' => true,
-			'message' => __( 'GitHub token verified.', 'daily-digest' ),
-			'meta'    => array(
-				'username'    => (string) $payload['login'],
-				'name'        => isset( $payload['name'] ) ? (string) $payload['name'] : (string) $payload['login'],
-				'profile_url' => isset( $payload['html_url'] ) ? (string) $payload['html_url'] : '',
-			),
-		);
-	}
-}
-
-/**
  * ClickUp token provider for Daily Digest.
  */
 class Daily_Digest_Keyring_Service_Clickup extends Daily_Digest_Keyring_Service_Base {
@@ -384,6 +332,5 @@ class Daily_Digest_Keyring_Service_Slack extends Daily_Digest_Keyring_Service_Ba
 	}
 }
 
-add_action( 'keyring_load_services', array( 'Daily_Digest_Keyring_Service_Github', 'init' ) );
 add_action( 'keyring_load_services', array( 'Daily_Digest_Keyring_Service_Clickup', 'init' ) );
 add_action( 'keyring_load_services', array( 'Daily_Digest_Keyring_Service_Slack', 'init' ) );

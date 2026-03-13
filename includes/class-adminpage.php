@@ -592,8 +592,9 @@ class AdminPage {
 	private function get_provider_setup_links( string $provider_slug ): array {
 		$docs = array(
 			'github'  => array(
-				'Create Personal Access Token' => 'https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens',
-				'GitHub API Authentication'    => 'https://docs.github.com/en/rest/authentication/authenticating-to-the-rest-api',
+				'Create OAuth App'          => 'https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app',
+				'OAuth App Overview'        => 'https://docs.github.com/en/apps/oauth-apps',
+				'OAuth Redirect Guidelines' => 'https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps',
 			),
 			'clickup' => array(
 				'ClickUp API Authentication' => 'https://developer.clickup.com/docs/authentication',

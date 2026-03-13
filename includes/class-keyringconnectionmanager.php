@@ -23,7 +23,7 @@ class KeyringConnectionManager {
 	 * @var array<string, string>
 	 */
 	private array $service_map = array(
-		'github'  => 'daily_digest_github',
+		'github'  => 'github',
 		'clickup' => 'daily_digest_clickup',
 		'slack'   => 'daily_digest_slack',
 	);

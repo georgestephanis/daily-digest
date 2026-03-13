@@ -182,6 +182,86 @@ class Daily_Digest_Keyring_Service_Clickup extends Daily_Digest_Keyring_Service_
 	const NAME  = 'daily_digest_clickup';
 	const LABEL = 'Daily Digest ClickUp';
 
+	/**
+	 * Constructor.
+	 */
+	public function __construct() {
+		parent::__construct();
+
+		if ( ! KEYRING__HEADLESS_MODE ) {
+			add_action( 'keyring_daily_digest_clickup_manage_ui', array( $this, 'manage_ui' ) );
+		}
+	}
+
+	/**
+	 * ClickUp requires explicit service setup acknowledgement in Keyring.
+	 *
+	 * @return bool
+	 */
+	public function is_configured() {
+		$creds = $this->get_credentials();
+
+		return is_array( $creds ) && ! empty( $creds['configured'] );
+	}
+
+	/**
+	 * Renders Keyring management UI for the ClickUp service.
+	 */
+	public function manage_ui() {
+		if ( ! isset( $_REQUEST['nonce'] ) || ! wp_verify_nonce( $_REQUEST['nonce'], 'keyring-manage-' . $this->get_name() ) ) {
+			Keyring::error( __( 'Invalid/missing management nonce.', 'keyring' ) );
+			exit;
+		}
+
+		if ( isset( $_POST['dd_clickup_configured'] ) ) {
+			$enabled = '1' === (string) wp_unslash( $_POST['dd_clickup_configured'] );
+
+			$this->update_credentials(
+				array(
+					'configured' => $enabled ? '1' : '',
+				)
+			);
+
+			Keyring::message( __( 'ClickUp service settings saved.', 'daily-digest' ) );
+		}
+
+		$creds       = $this->get_credentials();
+		$configured  = is_array( $creds ) && ! empty( $creds['configured'] );
+		$services_url = Keyring_Util::admin_url( false, array( 'action' => 'services' ) );
+
+		echo '<div class="wrap">';
+		echo '<h2>' . esc_html__( 'Keyring Service Management', 'keyring' ) . '</h2>';
+		echo '<p><a href="' . esc_url( $services_url ) . '">' . esc_html__( '&larr; Back', 'keyring' ) . '</a></p>';
+		echo '<h3>' . esc_html__( 'Daily Digest ClickUp', 'daily-digest' ) . '</h3>';
+		echo '<p>' . esc_html__( 'Daily Digest uses a ClickUp personal token entered during the connection step. No client ID or secret is required.', 'daily-digest' ) . '</p>';
+		echo '<p>' . esc_html__( 'Enable this service to allow users to connect ClickUp via Keyring.', 'daily-digest' ) . '</p>';
+
+		echo '<form method="post" action="">';
+		echo '<input type="hidden" name="service" value="' . esc_attr( $this->get_name() ) . '" />';
+		echo '<input type="hidden" name="action" value="manage" />';
+		wp_nonce_field( 'keyring-manage', 'kr_nonce', false );
+		wp_nonce_field( 'keyring-manage-' . $this->get_name(), 'nonce', false );
+
+		echo '<table class="form-table">';
+		echo '<tr>';
+		echo '<th scope="row">' . esc_html__( 'Service Enabled', 'daily-digest' ) . '</th>';
+		echo '<td>';
+		echo '<label for="dd-clickup-configured">';
+		echo '<input type="checkbox" id="dd-clickup-configured" name="dd_clickup_configured" value="1" ' . checked( $configured, true, false ) . ' /> ';
+		echo esc_html__( 'Enable ClickUp connections for Daily Digest', 'daily-digest' );
+		echo '</label>';
+		echo '</td>';
+		echo '</tr>';
+		echo '</table>';
+
+		echo '<p class="submitbox">';
+		echo '<input type="submit" name="submit" value="' . esc_attr__( 'Save Changes', 'keyring' ) . '" id="submit" class="button-primary" />';
+		echo '<a href="' . esc_url( $services_url ) . '" class="submitdelete" style="margin-left:2em;">' . esc_html__( 'Cancel', 'keyring' ) . '</a>';
+		echo '</p>';
+		echo '</form>';
+		echo '</div>';
+	}
+
 	protected function get_token_help_text() {
 		return __( 'Paste a ClickUp personal API token.', 'daily-digest' );
 	}

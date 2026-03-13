@@ -32,6 +32,9 @@ export const initSettingsPage = () => {
 	const providerToggles = form.querySelectorAll(
 		'.daily-digest-provider-toggle'
 	);
+	const disconnectButtons = form.querySelectorAll(
+		'.daily-digest-disconnect-provider'
+	);
 	const messageTimers = new WeakMap();
 
 	const replaceMessage = ( el, text, ok ) => {
@@ -154,6 +157,59 @@ export const initSettingsPage = () => {
 		);
 	};
 
+	const disconnectProvider = async ( provider, button ) => {
+		if ( ! provider ) {
+			return;
+		}
+
+		// eslint-disable-next-line no-alert -- Explicit AYS confirmation is required before disconnecting provider tokens.
+		const confirmed = window.confirm(
+			__(
+				'Are you sure you want to disconnect this provider?',
+				'daily-digest'
+			)
+		);
+
+		if ( ! confirmed ) {
+			return;
+		}
+
+		if ( button ) {
+			button.disabled = true;
+		}
+
+		setSaveResult( provider, __( 'Disconnecting…', 'daily-digest' ), true );
+
+		const { response, payload } = await requestJson(
+			`${ config.restRoot }/providers/${ window.encodeURIComponent(
+				provider
+			) }/disconnect`,
+			{}
+		);
+
+		if ( ! response.ok || ! payload || ! payload.success ) {
+			const message =
+				payload && payload.message
+					? payload.message
+					: __( 'Unable to disconnect provider.', 'daily-digest' );
+			setSaveResult( provider, message, false );
+
+			if ( button ) {
+				button.disabled = false;
+			}
+
+			return;
+		}
+
+		setSaveResult(
+			provider,
+			payload.message || __( 'Provider disconnected.', 'daily-digest' ),
+			true
+		);
+
+		window.location.reload();
+	};
+
 	buttons.forEach( ( button ) => {
 		button.addEventListener( 'click', async () => {
 			if (
@@ -202,6 +258,13 @@ export const initSettingsPage = () => {
 				? row.getAttribute( 'data-provider' ) || ''
 				: '';
 			await saveProviderState( provider );
+		} );
+	} );
+
+	disconnectButtons.forEach( ( button ) => {
+		button.addEventListener( 'click', async () => {
+			const provider = button.getAttribute( 'data-provider' ) || '';
+			await disconnectProvider( provider, button );
 		} );
 	} );
 };

@@ -102,8 +102,8 @@ class AdminPage {
 
 		\add_submenu_page(
 			'daily-digest',
-			\__( 'Settings', 'daily-digest' ),
-			\__( 'Settings', 'daily-digest' ),
+			\__( 'Connections', 'daily-digest' ),
+			\__( 'Connections', 'daily-digest' ),
 			'read',
 			'daily-digest-settings',
 			array( $this, 'render_settings_page' )
@@ -134,13 +134,13 @@ class AdminPage {
 			<h1>
 				<?php \esc_html_e( 'Daily Digest Overview', 'daily-digest' ); ?>
 				<a href="<?php echo \esc_url( \admin_url( 'admin.php?page=daily-digest-settings' ) ); ?>" class="page-title-action">
-					<?php \esc_html_e( 'Settings', 'daily-digest' ); ?>
+					<?php \esc_html_e( 'Connections', 'daily-digest' ); ?>
 				</a>
 			</h1>
 			<p>
 				<?php
 				echo \esc_html__( 'View your unified activity digest below.', 'daily-digest' ) . ' ';
-				echo '<a href="' . \esc_url( \admin_url( 'admin.php?page=daily-digest-settings' ) ) . '">' . \esc_html__( 'Configure providers in Settings.', 'daily-digest' ) . '</a>';
+				echo '<a href="' . \esc_url( \admin_url( 'admin.php?page=daily-digest-settings' ) ) . '">' . \esc_html__( 'Configure providers in Connections.', 'daily-digest' ) . '</a>';
 				?>
 			</p>
 			<div id="daily-digest-overview-app" data-initial-days="<?php echo \esc_attr( (string) $days ); ?>">
@@ -273,7 +273,7 @@ class AdminPage {
 		$keyring_ready    = $this->keyring_connections->is_available();
 		?>
 		<div class="wrap">
-			<h1><?php \esc_html_e( 'Daily Digest Settings', 'daily-digest' ); ?></h1>
+			<h1><?php \esc_html_e( 'Daily Digest Connections', 'daily-digest' ); ?></h1>
 			<p><?php \esc_html_e( 'Enable providers with the toggle below. Detailed connection metadata is available on demand.', 'daily-digest' ); ?></p>
 			<?php if ( ! $keyring_ready ) : ?>
 				<div class="notice notice-warning inline"><p><?php \esc_html_e( 'Keyring is not available. Provider connections cannot be created.', 'daily-digest' ); ?></p></div>
@@ -335,6 +335,11 @@ class AdminPage {
 											<summary><?php \esc_html_e( 'View connection details', 'daily-digest' ); ?></summary>
 											<p><?php echo wp_kses_post( $this->render_connection_meta( $slug, $connection_meta ) ); ?></p>
 										</details>
+										<p>
+											<button type="button" class="button button-link-delete daily-digest-disconnect-provider" data-provider="<?php echo \esc_attr( $slug ); ?>">
+												<?php \esc_html_e( 'Disconnect', 'daily-digest' ); ?>
+											</button>
+										</p>
 									<?php endif; ?>
 									<?php if ( $service_exists && ! $service_ready ) : ?>
 										<p class="description">

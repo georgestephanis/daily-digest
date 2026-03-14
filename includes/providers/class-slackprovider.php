@@ -168,8 +168,12 @@ class SlackProvider extends AbstractProvider {
 			return array();
 		}
 
-		$days       = isset( $options['days'] ) ? \max( 1, \absint( $options['days'] ) ) : 1;
-		$after_date = \gmdate( 'Y-m-d', \strtotime( '-' . $days . ' days' ) );
+		if ( isset( $options['since'] ) ) {
+			$after_date = \gmdate( 'Y-m-d', (int) $options['since'] );
+		} else {
+			$days       = isset( $options['days'] ) ? \max( 1, \absint( $options['days'] ) ) : 1;
+			$after_date = \gmdate( 'Y-m-d', (int) \strtotime( '-' . $days . ' days' ) );
+		}
 		$queries    = array(
 			array(
 				'type'  => 'notification',

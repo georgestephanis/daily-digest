@@ -103,29 +103,38 @@ abstract class AbstractProvider implements ProviderInterface {
 	}
 
 	/**
-	 * Applies day-window filtering to activity items.
+	 * Applies time-window filtering to activity items.
 	 *
-	 * Items lacking a 'timestamp' key or older than the configured window are
+	 * Items lacking a 'timestamp' key or outside the configured window are
 	 * removed. The returned array is re-indexed.
 	 *
+	 * Accepts either a 'since'/'until' pair of Unix timestamps or a 'days' count.
+	 *
 	 * @param array $items   Activity items, each having a string 'timestamp' key.
-	 * @param array $options Query options; uses 'days' key (default 1).
+	 * @param array $options Query options; uses 'since'/'until' or 'days' (default 1).
 	 *
 	 * @return array
 	 */
 	protected function apply_time_window( array $items, array $options ): array {
-		$days      = isset( $options['days'] ) ? \max( 1, \absint( $options['days'] ) ) : 1;
-		$threshold = \strtotime( '-' . $days . ' days' );
+		if ( isset( $options['since'] ) ) {
+			$since = (int) $options['since'];
+			$until = isset( $options['until'] ) ? (int) $options['until'] : \PHP_INT_MAX;
+		} else {
+			$days  = isset( $options['days'] ) ? \max( 1, \absint( $options['days'] ) ) : 1;
+			$since = (int) \strtotime( '-' . $days . ' days' );
+			$until = \PHP_INT_MAX;
+		}
 
 		return \array_values(
 			\array_filter(
 				$items,
-				static function ( array $item ) use ( $threshold ): bool {
+				static function ( array $item ) use ( $since, $until ): bool {
 					if ( empty( $item['timestamp'] ) ) {
 						return false;
 					}
 
-					return \strtotime( (string) $item['timestamp'] ) >= $threshold;
+					$ts = (int) \strtotime( (string) $item['timestamp'] );
+					return $ts >= $since && $ts <= $until;
 				}
 			)
 		);

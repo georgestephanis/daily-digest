@@ -58,7 +58,7 @@ class DigestService {
 	public function get_digest_for_user( int $user_id, array $options = array() ): array {
 		$all_provider_settings = $this->user_settings->get_for_user( $user_id );
 		$digest_items          = array();
-		$days                  = isset( $options['days'] ) ? \max( 1, \absint( $options['days'] ) ) : 1;
+		$cache_suffix = $this->build_cache_suffix( $options );
 
 		foreach ( $this->provider_registry->all() as $slug => $provider ) {
 			$provider_settings = $all_provider_settings[ $slug ] ?? array();
@@ -66,7 +66,7 @@ class DigestService {
 				continue;
 			}
 
-			$cache_key      = 'dd_cache_' . $user_id . '_' . $slug . '_' . $days;
+			$cache_key      = 'dd_cache_' . $user_id . '_' . $slug . '_' . $cache_suffix;
 			$provider_items = \get_transient( $cache_key );
 
 			if ( false === $provider_items ) {
@@ -136,8 +136,7 @@ class DigestService {
 			return array();
 		}
 
-		$days           = isset( $options['days'] ) ? \max( 1, \absint( $options['days'] ) ) : 1;
-		$cache_key      = 'dd_cache_' . $user_id . '_' . $provider_slug . '_' . $days;
+		$cache_key      = 'dd_cache_' . $user_id . '_' . $provider_slug . '_' . $this->build_cache_suffix( $options );
 		$provider_items = \get_transient( $cache_key );
 
 		if ( false === $provider_items ) {
@@ -166,6 +165,23 @@ class DigestService {
 		);
 
 		return $digest_items;
+	}
+
+	/**
+	 * Builds a cache key suffix from query options.
+	 *
+	 * @param array $options Query options.
+	 *
+	 * @return string
+	 */
+	private function build_cache_suffix( array $options ): string {
+		if ( isset( $options['since'] ) ) {
+			$since = (int) $options['since'];
+			$until = isset( $options['until'] ) ? (int) $options['until'] : PHP_INT_MAX;
+			return $since . '_' . $until;
+		}
+
+		return (string) ( isset( $options['days'] ) ? \max( 1, \absint( $options['days'] ) ) : 1 );
 	}
 
 	/**

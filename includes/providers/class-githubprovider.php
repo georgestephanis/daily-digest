@@ -154,8 +154,12 @@ class GithubProvider extends AbstractProvider {
 		}
 
 		$username = (string) $this->get_token_meta( $user_id, 'username' );
-		$days     = isset( $options['days'] ) ? \max( 1, \absint( $options['days'] ) ) : 1;
-		$since    = \gmdate( 'c', \strtotime( '-' . $days . ' days' ) );
+		if ( isset( $options['since'] ) ) {
+			$since = \gmdate( 'c', (int) $options['since'] );
+		} else {
+			$days  = isset( $options['days'] ) ? \max( 1, \absint( $options['days'] ) ) : 1;
+			$since = \gmdate( 'c', (int) \strtotime( '-' . $days . ' days' ) );
+		}
 
 		$headers = array(
 			'Accept'               => 'application/vnd.github+json',

@@ -4,6 +4,7 @@ import {
 	useCallback,
 	useEffect,
 	useMemo,
+	useRef,
 	useState,
 } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
@@ -131,47 +132,53 @@ const buildViewStorageKey = ( config ) => {
 	return `dailyDigestOverviewView:${ userId }`;
 };
 
-const buildDaysStorageKey = ( config ) => {
+const buildDateStorageKey = ( config ) => {
 	const userId = Number.parseInt( config?.currentUser, 10 ) || 0;
-	return `dailyDigestOverviewDays:${ userId }`;
+	return `dailyDigestOverviewDates:${ userId }`;
 };
 
-const hasExplicitDaysQueryParam = () => {
-	try {
-		const params = new URLSearchParams( window.location.search );
-		return params.has( 'days' );
-	} catch ( error ) {
-		return false;
+const getTodayDate = ( config ) => {
+	if (
+		config?.initialDate &&
+		/^\d{4}-\d{2}-\d{2}$/.test( config.initialDate )
+	) {
+		return config.initialDate;
 	}
+	return new Date().toISOString().slice( 0, 10 );
 };
 
-const loadInitialDays = ( config ) => {
-	const configDays = Math.max(
-		1,
-		Number.parseInt( config?.initialDays, 10 ) || 1
-	);
+const getDatePlusDays = ( dateStr, days ) => {
+	const date = new Date( dateStr + 'T00:00:00' );
+	date.setDate( date.getDate() + days );
+	return date.toISOString().slice( 0, 10 );
+};
 
-	if ( hasExplicitDaysQueryParam() ) {
-		return configDays;
-	}
+const loadInitialDates = ( config ) => {
+	const today = getTodayDate( config );
 
 	try {
 		const storedValue = window.localStorage.getItem(
-			buildDaysStorageKey( config )
+			buildDateStorageKey( config )
 		);
-		if ( ! storedValue ) {
-			return configDays;
-		}
-
-		const parsed = JSON.parse( storedValue );
-		const parsedDays = Number.parseInt( parsed?.days, 10 );
-
-		if ( parsedDays > 1 ) {
-			return Math.min( 30, parsedDays );
+		if ( storedValue ) {
+			const parsed = JSON.parse( storedValue );
+			if (
+				parsed?.startDate &&
+				/^\d{4}-\d{2}-\d{2}$/.test( parsed.startDate )
+			) {
+				const startDate = parsed.startDate;
+				const endDate =
+					parsed.endDate &&
+					/^\d{4}-\d{2}-\d{2}$/.test( parsed.endDate )
+						? parsed.endDate
+						: startDate;
+				const isRange = startDate !== endDate || Boolean( parsed.isRange );
+				return { startDate, endDate, isRange };
+			}
 		}
 	} catch ( error ) {}
 
-	return configDays;
+	return { startDate: today, endDate: today, isRange: false };
 };
 
 const loadPersistedView = ( config ) => {
@@ -209,11 +216,14 @@ const loadPersistedView = ( config ) => {
 };
 
 const App = ( { config } ) => {
-	const [ days, setDays ] = useState( () => loadInitialDays( config ) );
+	const [ { startDate, endDate, isRange }, setDates ] = useState( () =>
+		loadInitialDates( config )
+	);
 	const [ rawItems, setRawItems ] = useState( [] );
 	const [ isLoading, setIsLoading ] = useState( true );
 	const [ errorMessage, setErrorMessage ] = useState( '' );
 	const [ view, setView ] = useState( () => loadPersistedView( config ) );
+	const isInitialLoad = useRef( true );
 
 	const fields = useMemo(
 		() => [
@@ -295,9 +305,7 @@ const App = ( { config } ) => {
 		setErrorMessage( '' );
 
 		const response = await window.fetch(
-			`${ config.restRoot }/digest?days=${ window.encodeURIComponent(
-				String( Math.max( 1, days ) )
-			) }`,
+			`${ config.restRoot }/digest?start_date=${ window.encodeURIComponent( startDate ) }&end_date=${ window.encodeURIComponent( endDate ) }`,
 			{
 				headers: {
 					'X-WP-Nonce': config.restNonce,
@@ -317,7 +325,7 @@ const App = ( { config } ) => {
 		const payload = await response.json();
 		setRawItems( Array.isArray( payload.items ) ? payload.items : [] );
 		setIsLoading( false );
-	}, [ config.restNonce, config.restRoot, days ] );
+	}, [ config.restNonce, config.restRoot, startDate, endDate ] );
 
 	const actions = useMemo(
 		() => [
@@ -345,7 +353,10 @@ const App = ( { config } ) => {
 	);
 
 	useEffect( () => {
-		void loadDigest();
+		const delay = isInitialLoad.current ? 0 : 2000;
+		isInitialLoad.current = false;
+		const timer = setTimeout( () => void loadDigest(), delay );
+		return () => clearTimeout( timer );
 	}, [ loadDigest ] );
 
 	useEffect( () => {
@@ -357,44 +368,82 @@ const App = ( { config } ) => {
 
 	useEffect( () => {
 		try {
-			const key = buildDaysStorageKey( config );
-
-			if ( days > 1 ) {
-				window.localStorage.setItem(
-					key,
-					JSON.stringify( {
-						days,
-					} )
-				);
-				return;
-			}
-
-			window.localStorage.removeItem( key );
+			const key = buildDateStorageKey( config );
+			window.localStorage.setItem(
+				key,
+				JSON.stringify( { startDate, endDate, isRange } )
+			);
 		} catch ( error ) {}
-	}, [ config, days ] );
+	}, [ config, startDate, endDate, isRange ] );
 
 	return (
 		<div>
 			<h2>{ __( 'Digest', 'daily-digest' ) }</h2>
 			<div className="daily-digest-overview-controls">
-				<label htmlFor="daily-digest-days-input">
-					{ __( 'Window (days):', 'daily-digest' ) }
+				<label htmlFor="daily-digest-start-date">
+					{ isRange
+						? __( 'From:', 'daily-digest' )
+						: __( 'Date:', 'daily-digest' ) }
 				</label>
 				<input
-					id="daily-digest-days-input"
-					className="daily-digest-overview-days"
-					type="number"
-					min="1"
-					max="30"
-					value={ days }
+					id="daily-digest-start-date"
+					className="daily-digest-overview-date"
+					type="date"
+					value={ startDate }
 					onChange={ ( event ) => {
-						const nextDays =
-							Number.parseInt( event.target.value, 10 ) || 1;
-						setDays( Math.max( 1, nextDays ) );
+						const newStart = event.target.value;
+						if ( ! newStart ) {
+							return;
+						}
+						const maxEnd = getDatePlusDays( newStart, 6 );
+						let newEnd = isRange ? endDate : newStart;
+						if ( newEnd < newStart ) {
+							newEnd = newStart;
+						} else if ( newEnd > maxEnd ) {
+							newEnd = maxEnd;
+						}
+						setDates( { startDate: newStart, endDate: newEnd, isRange } );
 					} }
 				/>
+				{ isRange && (
+					<>
+						<label htmlFor="daily-digest-end-date">
+							{ __( 'To:', 'daily-digest' ) }
+						</label>
+						<input
+							id="daily-digest-end-date"
+							className="daily-digest-overview-date"
+							type="date"
+							value={ endDate }
+							min={ startDate }
+							max={ getDatePlusDays( startDate, 6 ) }
+							onChange={ ( event ) => {
+								const newEnd = event.target.value;
+								if ( ! newEnd ) {
+									return;
+								}
+								setDates( { startDate, endDate: newEnd, isRange } );
+							} }
+						/>
+					</>
+				) }
+				<label className="daily-digest-range-toggle">
+					<input
+						type="checkbox"
+						checked={ isRange }
+						onChange={ ( event ) => {
+							const nowRange = event.target.checked;
+							setDates( {
+								startDate,
+								endDate: nowRange ? endDate : startDate,
+								isRange: nowRange,
+							} );
+						} }
+					/>
+					{ __( 'Date range', 'daily-digest' ) }
+				</label>
 				<Button variant="secondary" onClick={ () => void loadDigest() }>
-					{ __( 'Refresh Digest', 'daily-digest' ) }
+					{ __( 'Refresh', 'daily-digest' ) }
 				</Button>
 			</div>
 

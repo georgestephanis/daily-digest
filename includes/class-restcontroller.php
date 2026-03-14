@@ -80,6 +80,15 @@ class RestController {
 	 * Registers REST routes.
 	 */
 	public function register_routes(): void {
+		$date_arg = array(
+			'type'              => 'string',
+			'required'          => false,
+			'sanitize_callback' => 'sanitize_text_field',
+			'validate_callback' => static function ( $param ): bool {
+				return \is_string( $param ) && (bool) \preg_match( '/^\d{4}-\d{2}-\d{2}$/', $param ) && false !== \strtotime( $param );
+			},
+		);
+
 		\register_rest_route(
 			'daily-digest/v1',
 			'/digest',
@@ -88,7 +97,9 @@ class RestController {
 				'callback'            => array( $this, 'get_digest' ),
 				'permission_callback' => array( $this, 'can_read' ),
 				'args'                => array(
-					'days' => array(
+					'start_date' => $date_arg,
+					'end_date'   => $date_arg,
+					'days'       => array(
 						'type'              => 'integer',
 						'required'          => false,
 						'sanitize_callback' => 'absint',
@@ -105,7 +116,9 @@ class RestController {
 				'callback'            => array( $this, 'get_provider_activity' ),
 				'permission_callback' => array( $this, 'can_read' ),
 				'args'                => array(
-					'days' => array(
+					'start_date' => $date_arg,
+					'end_date'   => $date_arg,
+					'days'       => array(
 						'type'              => 'integer',
 						'required'          => false,
 						'sanitize_callback' => 'absint',
@@ -370,9 +383,9 @@ class RestController {
 	 * @return \WP_REST_Response
 	 */
 	public function get_digest( \WP_REST_Request $request ): \WP_REST_Response {
-		$user_id   = \get_current_user_id();
-		$days      = max( 1, (int) $request->get_param( 'days' ) );
-		$items     = $this->digest_service->get_digest_for_user( $user_id, array( 'days' => $days ) );
+		$user_id = \get_current_user_id();
+		$options = $this->build_date_options( $request );
+		$items   = $this->digest_service->get_digest_for_user( $user_id, $options );
 		$providers = array();
 
 		foreach ( $this->provider_registry->all() as $slug => $provider ) {
@@ -414,8 +427,8 @@ class RestController {
 		}
 
 		$user_id = \get_current_user_id();
-		$days    = max( 1, (int) $request->get_param( 'days' ) );
-		$items   = $this->digest_service->get_provider_digest_for_user( $user_id, $provider_slug, array( 'days' => $days ) );
+		$options = $this->build_date_options( $request );
+		$items   = $this->digest_service->get_provider_digest_for_user( $user_id, $provider_slug, $options );
 
 		return new \WP_REST_Response(
 			array(
@@ -584,6 +597,46 @@ class RestController {
 			),
 			200
 		);
+	}
+
+	/**
+	 * Builds digest query options from REST request date or days params.
+	 *
+	 * Prefers start_date/end_date when present. Falls back to days.
+	 * Date ranges are capped at 7 days.
+	 *
+	 * @param \WP_REST_Request $request REST request.
+	 *
+	 * @return array
+	 */
+	private function build_date_options( \WP_REST_Request $request ): array {
+		$start_date = (string) $request->get_param( 'start_date' );
+
+		if ( ! empty( $start_date ) && \preg_match( '/^\d{4}-\d{2}-\d{2}$/', $start_date ) ) {
+			$end_date = (string) $request->get_param( 'end_date' );
+			if ( empty( $end_date ) || ! \preg_match( '/^\d{4}-\d{2}-\d{2}$/', $end_date ) ) {
+				$end_date = $start_date;
+			}
+
+			if ( $end_date < $start_date ) {
+				$end_date = $start_date;
+			}
+
+			// Cap range at 7 days.
+			$max_end = \gmdate( 'Y-m-d', (int) \strtotime( $start_date ) + 6 * \DAY_IN_SECONDS );
+			if ( $end_date > $max_end ) {
+				$end_date = $max_end;
+			}
+
+			return array(
+				'since' => (int) \strtotime( $start_date . ' 00:00:00' ),
+				'until' => (int) \strtotime( $end_date . ' 23:59:59' ),
+			);
+		}
+
+		$days = \max( 1, (int) $request->get_param( 'days' ) );
+
+		return array( 'days' => $days );
 	}
 
 	/**

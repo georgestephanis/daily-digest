@@ -182,9 +182,14 @@ class HarvestProvider extends AbstractProvider {
 			return array();
 		}
 
-		$days      = isset( $options['days'] ) ? \max( 1, \absint( $options['days'] ) ) : 1;
-		$from_date = \gmdate( 'Y-m-d', \strtotime( '-' . ( $days - 1 ) . ' days' ) );
-		$to_date   = \gmdate( 'Y-m-d' );
+		if ( isset( $options['since'] ) ) {
+			$from_date = \gmdate( 'Y-m-d', (int) $options['since'] );
+			$to_date   = isset( $options['until'] ) ? \gmdate( 'Y-m-d', (int) $options['until'] ) : \gmdate( 'Y-m-d' );
+		} else {
+			$days      = isset( $options['days'] ) ? \max( 1, \absint( $options['days'] ) ) : 1;
+			$from_date = \gmdate( 'Y-m-d', (int) \strtotime( '-' . ( $days - 1 ) . ' days' ) );
+			$to_date   = \gmdate( 'Y-m-d' );
+		}
 
 		$meta_user_id = (string) $this->get_token_meta( $user_id, 'user_id' );
 		$page         = 1;

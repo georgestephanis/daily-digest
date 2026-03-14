@@ -126,9 +126,6 @@ class AdminPage {
 		if ( ! \is_user_logged_in() ) {
 			\wp_die( \esc_html__( 'You must be logged in to view this page.', 'daily-digest' ) );
 		}
-
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only filter input that does not change data.
-		$days = isset( $_GET['days'] ) ? \max( 1, \absint( $_GET['days'] ) ) : 1;
 		?>
 		<div class="wrap">
 			<h1>
@@ -143,7 +140,7 @@ class AdminPage {
 				echo '<a href="' . \esc_url( \admin_url( 'admin.php?page=daily-digest-settings' ) ) . '">' . \esc_html__( 'Configure providers in Connections.', 'daily-digest' ) . '</a>';
 				?>
 			</p>
-			<div id="daily-digest-overview-app" data-initial-days="<?php echo \esc_attr( (string) $days ); ?>">
+			<div id="daily-digest-overview-app">
 				<p><?php \esc_html_e( 'Loading activity…', 'daily-digest' ); ?></p>
 			</div>
 		</div>
@@ -193,14 +190,11 @@ class AdminPage {
 		);
 
 		if ( $is_overview_page ) {
-			// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only filter input used only for app initialization.
-			$days = isset( $_GET['days'] ) ? \max( 1, \absint( $_GET['days'] ) ) : 1;
-
 			$overview_config = array(
 				'restRoot'    => \esc_url_raw( \rest_url( 'daily-digest/v1' ) ),
 				'restNonce'   => \wp_create_nonce( 'wp_rest' ),
 				'currentUser' => \get_current_user_id(),
-				'initialDays' => $days,
+				'initialDate' => \gmdate( 'Y-m-d' ),
 				'settingsUrl' => \admin_url( 'admin.php?page=daily-digest-settings' ),
 			);
 

@@ -8,8 +8,17 @@
 		margin: 0 0 12px;
 	}
 
-	.daily-digest-overview-days {
-		max-width: 96px;
+	.daily-digest-overview-date {
+		max-width: 160px;
+	}
+
+	.daily-digest-range-toggle {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		white-space: nowrap;
+		font-size: 13px;
+		cursor: pointer;
 	}
 
 	.dataviews-view-table {

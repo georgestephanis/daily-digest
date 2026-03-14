@@ -154,9 +154,13 @@ class ClickupProvider extends AbstractProvider {
 			return array();
 		}
 
-		$days           = isset( $options['days'] ) ? \max( 1, \absint( $options['days'] ) ) : 1;
-		$since_unix     = \strtotime( '-' . $days . ' days' );
-		$since_millis   = false !== $since_unix ? (int) $since_unix * 1000 : 0;
+		if ( isset( $options['since'] ) ) {
+			$since_millis = (int) $options['since'] * 1000;
+		} else {
+			$days         = isset( $options['days'] ) ? \max( 1, \absint( $options['days'] ) ) : 1;
+			$since_unix   = \strtotime( '-' . $days . ' days' );
+			$since_millis = false !== $since_unix ? (int) $since_unix * 1000 : 0;
+		}
 		$activity_items = array();
 		$max_pages      = 5;
 		$identity       = $this->build_user_identity_context( $user_id );

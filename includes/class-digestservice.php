@@ -58,7 +58,7 @@ class DigestService {
 	public function get_digest_for_user( int $user_id, array $options = array() ): array {
 		$all_provider_settings = $this->user_settings->get_for_user( $user_id );
 		$digest_items          = array();
-		$cache_suffix = $this->build_cache_suffix( $options );
+		$cache_suffix          = $this->build_cache_suffix( $options );
 
 		foreach ( $this->provider_registry->all() as $slug => $provider ) {
 			$provider_settings = $all_provider_settings[ $slug ] ?? array();
@@ -112,6 +112,31 @@ class DigestService {
 		for ( $days = 1; $days <= 90; $days++ ) {
 			\delete_transient( 'dd_cache_' . $user_id . '_' . $provider_slug . '_' . $days );
 		}
+	}
+
+	/**
+	 * Clears all cached digest data for a user across all providers and date ranges.
+	 *
+	 * Uses a direct DB query so that timestamp-based cache keys (which cannot be
+	 * enumerated) are also removed alongside the legacy day-count keys.
+	 *
+	 * @param int $user_id User ID.
+	 *
+	 * @return void
+	 */
+	public function clear_all_caches_for_user( int $user_id ): void {
+		global $wpdb;
+
+		$prefix = 'dd_cache_' . $user_id . '_';
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- Bulk-deleting plugin-owned transients by prefix; no WP API supports wildcard deletes.
+		$wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
+				$wpdb->esc_like( '_transient_' . $prefix ) . '%',
+				$wpdb->esc_like( '_transient_timeout_' . $prefix ) . '%'
+			)
+		);
 	}
 
 	/**

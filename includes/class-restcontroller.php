@@ -159,6 +159,16 @@ class RestController {
 
 		\register_rest_route(
 			'daily-digest/v1',
+			'/digest/cache',
+			array(
+				'methods'             => \WP_REST_Server::DELETABLE,
+				'callback'            => array( $this, 'clear_digest_cache' ),
+				'permission_callback' => array( $this, 'can_read' ),
+			)
+		);
+
+		\register_rest_route(
+			'daily-digest/v1',
 			'/logs',
 			array(
 				'methods'             => \WP_REST_Server::READABLE,
@@ -383,9 +393,9 @@ class RestController {
 	 * @return \WP_REST_Response
 	 */
 	public function get_digest( \WP_REST_Request $request ): \WP_REST_Response {
-		$user_id = \get_current_user_id();
-		$options = $this->build_date_options( $request );
-		$items   = $this->digest_service->get_digest_for_user( $user_id, $options );
+		$user_id   = \get_current_user_id();
+		$options   = $this->build_date_options( $request );
+		$items     = $this->digest_service->get_digest_for_user( $user_id, $options );
 		$providers = array();
 
 		foreach ( $this->provider_registry->all() as $slug => $provider ) {
@@ -404,6 +414,18 @@ class RestController {
 			),
 			200
 		);
+	}
+
+	/**
+	 * Clears all cached digest data for the current user.
+	 *
+	 * @return \WP_REST_Response
+	 */
+	public function clear_digest_cache(): \WP_REST_Response {
+		$user_id = \get_current_user_id();
+		$this->digest_service->clear_all_caches_for_user( $user_id );
+
+		return new \WP_REST_Response( array( 'success' => true ), 200 );
 	}
 
 	/**

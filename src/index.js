@@ -7,7 +7,7 @@ import {
 	useRef,
 	useState,
 } from '@wordpress/element';
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 import { Button, Spinner } from '@wordpress/components';
 import { DataViews, filterSortAndPaginate } from '@wordpress/dataviews/wp';
 import { LogViewerApp } from './log-viewer-app';
@@ -223,7 +223,11 @@ const App = ( { config } ) => {
 	const [ isLoading, setIsLoading ] = useState( true );
 	const [ errorMessage, setErrorMessage ] = useState( '' );
 	const [ view, setView ] = useState( () => loadPersistedView( config ) );
+	const [ hasLoaded, setHasLoaded ] = useState( false );
+	const [ cooldownRemaining, setCooldownRemaining ] = useState( 0 );
 	const isInitialLoad = useRef( true );
+	const debounceTimerRef = useRef( null );
+	const cooldownIntervalRef = useRef( null );
 
 	const fields = useMemo(
 		() => [
@@ -319,12 +323,14 @@ const App = ( { config } ) => {
 				__( 'Unable to load digest data.', 'daily-digest' )
 			);
 			setIsLoading( false );
+			setHasLoaded( true );
 			return;
 		}
 
 		const payload = await response.json();
 		setRawItems( Array.isArray( payload.items ) ? payload.items : [] );
 		setIsLoading( false );
+		setHasLoaded( true );
 	}, [ config.restNonce, config.restRoot, startDate, endDate ] );
 
 	const actions = useMemo(
@@ -347,6 +353,42 @@ const App = ( { config } ) => {
 		[]
 	);
 
+	const handleManualRefresh = useCallback( async () => {
+		// Cancel any pending debounced fetch so it doesn't fire after the manual one.
+		if ( debounceTimerRef.current ) {
+			clearTimeout( debounceTimerRef.current );
+			debounceTimerRef.current = null;
+		}
+
+		// Start 60-second cooldown.
+		setCooldownRemaining( 60 );
+		if ( cooldownIntervalRef.current ) {
+			clearInterval( cooldownIntervalRef.current );
+		}
+		cooldownIntervalRef.current = setInterval( () => {
+			setCooldownRemaining( ( prev ) => {
+				if ( prev <= 1 ) {
+					clearInterval( cooldownIntervalRef.current );
+					cooldownIntervalRef.current = null;
+					return 0;
+				}
+				return prev - 1;
+			} );
+		}, 1000 );
+
+		// Clear server-side cache, then reload.
+		try {
+			await window.fetch( `${ config.restRoot }/digest/cache`, {
+				method: 'DELETE',
+				headers: { 'X-WP-Nonce': config.restNonce },
+			} );
+		} catch ( _err ) {
+			// Proceed even if the cache-clear request fails.
+		}
+
+		void loadDigest();
+	}, [ config.restRoot, config.restNonce, loadDigest ] );
+
 	const { data: processedData, paginationInfo } = useMemo(
 		() => filterSortAndPaginate( rawItems, view, fields ),
 		[ fields, rawItems, view ]
@@ -355,8 +397,14 @@ const App = ( { config } ) => {
 	useEffect( () => {
 		const delay = isInitialLoad.current ? 0 : 2000;
 		isInitialLoad.current = false;
-		const timer = setTimeout( () => void loadDigest(), delay );
-		return () => clearTimeout( timer );
+		debounceTimerRef.current = setTimeout( () => {
+			debounceTimerRef.current = null;
+			void loadDigest();
+		}, delay );
+		return () => {
+			clearTimeout( debounceTimerRef.current );
+			debounceTimerRef.current = null;
+		};
 	}, [ loadDigest ] );
 
 	useEffect( () => {
@@ -442,8 +490,18 @@ const App = ( { config } ) => {
 					/>
 					{ __( 'Date range', 'daily-digest' ) }
 				</label>
-				<Button variant="secondary" onClick={ () => void loadDigest() }>
-					{ __( 'Refresh', 'daily-digest' ) }
+				<Button
+					variant="secondary"
+					onClick={ () => void handleManualRefresh() }
+					disabled={ ! hasLoaded || cooldownRemaining > 0 }
+				>
+					{ cooldownRemaining > 0
+						? sprintf(
+								/* translators: %d: seconds until the button re-enables. */
+								__( 'Refresh (%ds)', 'daily-digest' ),
+								cooldownRemaining
+						  )
+						: __( 'Refresh', 'daily-digest' ) }
 				</Button>
 			</div>
 

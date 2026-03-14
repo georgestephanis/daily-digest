@@ -174,7 +174,7 @@ class SlackProvider extends AbstractProvider {
 			$days       = isset( $options['days'] ) ? \max( 1, \absint( $options['days'] ) ) : 1;
 			$after_date = \gmdate( 'Y-m-d', (int) \strtotime( '-' . $days . ' days' ) );
 		}
-		$queries    = array(
+		$queries = array(
 			array(
 				'type'  => 'notification',
 				'query' => '<@' . $slack_user . '> after:' . $after_date,
@@ -184,8 +184,8 @@ class SlackProvider extends AbstractProvider {
 				'query' => 'from:me after:' . $after_date,
 			),
 		);
-		$items      = array();
-		$seen       = array();
+		$items   = array();
+		$seen    = array();
 
 		foreach ( $queries as $query_item ) {
 			$query_type  = isset( $query_item['type'] ) ? (string) $query_item['type'] : '';

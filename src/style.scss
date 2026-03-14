@@ -11,6 +11,70 @@
 	.daily-digest-overview-days {
 		max-width: 96px;
 	}
+
+	.dataviews-view-table {
+		width: 100%;
+		table-layout: auto;
+	}
+
+	.dataviews-view-table col.dataviews-view-table__col-timestamp,
+	.dataviews-view-table col.dataviews-view-table__col-provider,
+	.dataviews-view-table col.dataviews-view-table__col-type {
+		width: 1%;
+	}
+
+	.dataviews-view-table col.dataviews-view-table__col-first-data,
+	.dataviews-view-table col.dataviews-view-table__col-summary {
+		width: auto;
+	}
+
+	.dataviews-view-table tbody .dataviews-view-table__cell-content-wrapper:not(.dataviews-column-primary__media) {
+		max-width: none;
+	}
+
+	.dataviews-view-table tbody .daily-digest-overview-title,
+	.dataviews-view-table tbody .daily-digest-overview-summary {
+		display: inline-block;
+		white-space: normal;
+		overflow-wrap: anywhere;
+		line-height: 1.35;
+	}
+
+	.dataviews-view-table tbody .daily-digest-overview-title a {
+		white-space: inherit;
+		overflow-wrap: inherit;
+	}
+
+	.daily-digest-provider-icon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 22px;
+		height: 22px;
+	}
+
+	.daily-digest-provider-icon img {
+		width: 100%;
+		height: 100%;
+		display: block;
+	}
+
+	.daily-digest-provider-icon-fallback {
+		border: 1px solid #dcdcde;
+		border-radius: 4px;
+		font-size: 11px;
+		font-weight: 600;
+		line-height: 1;
+		color: #3c434a;
+		background: #f6f7f7;
+	}
+
+	@media (max-width: 782px) {
+		.daily-digest-provider-icon {
+			width: 18px;
+			height: 18px;
+		}
+	}
 }
 
 #daily-digest-settings-form {

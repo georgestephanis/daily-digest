@@ -11,6 +11,9 @@ import { Button, Spinner } from '@wordpress/components';
 import { DataViews, filterSortAndPaginate } from '@wordpress/dataviews/wp';
 import { LogViewerApp } from './log-viewer-app';
 import { initSettingsPage } from './settings-page';
+import slackLogo from './assets/provider-logos/slack.svg';
+import clickupLogo from './assets/provider-logos/clickup.svg';
+import githubLogo from './assets/provider-logos/github.svg';
 import './style.scss';
 
 const defaultLayouts = {
@@ -24,6 +27,53 @@ const defaultLayouts = {
 			primaryField: 'title',
 		},
 	},
+};
+
+const providerLogos = {
+	slack: {
+		name: 'Slack',
+		src: slackLogo,
+	},
+	clickup: {
+		name: 'ClickUp',
+		src: clickupLogo,
+	},
+	github: {
+		name: 'GitHub',
+		src: githubLogo,
+	},
+};
+
+const renderProviderIcon = ( provider ) => {
+	const normalizedProvider = String( provider || '' )
+		.toLowerCase()
+		.replace( /\s+/g, '' );
+	const logo = providerLogos[ normalizedProvider ];
+
+	if ( logo ) {
+		return (
+			<span
+				className="daily-digest-provider-icon"
+				title={ logo.name }
+				aria-label={ logo.name }
+			>
+				<img src={ logo.src } alt="" aria-hidden="true" />
+			</span>
+		);
+	}
+
+	const providerLabel = String( provider || '' );
+	const fallbackText = providerLabel.slice( 0, 1 ).toUpperCase() || '?';
+
+	return (
+		<span
+			className="daily-digest-provider-icon daily-digest-provider-icon-fallback"
+			title={ providerLabel }
+			aria-label={ providerLabel }
+		>
+			{ fallbackText }
+		</span>
+	);
 };
 
 const formatTimestamp = ( value ) => {
@@ -142,6 +192,7 @@ const App = ( { config } ) => {
 				id: 'provider',
 				label: __( 'Provider', 'daily-digest' ),
 				enableGlobalSearch: true,
+				render: ( { item } ) => renderProviderIcon( item.provider ),
 			},
 			{
 				id: 'type',
@@ -155,22 +206,33 @@ const App = ( { config } ) => {
 				render: ( { item } ) => {
 					if ( item.url ) {
 						return (
-							<a
-								href={ item.url }
-								target="_blank"
-								rel="noopener noreferrer"
-							>
-								{ item.title || '' }
-							</a>
+							<span className="daily-digest-overview-title">
+								<a
+									href={ item.url }
+									target="_blank"
+									rel="noopener noreferrer"
+								>
+									{ item.title || '' }
+								</a>
+							</span>
 						);
 					}
-					return item.title || '';
+					return (
+						<span className="daily-digest-overview-title">
+							{ item.title || '' }
+						</span>
+					);
 				},
 			},
 			{
 				id: 'summary',
 				label: __( 'Summary', 'daily-digest' ),
 				enableGlobalSearch: true,
+				render: ( { item } ) => (
+					<span className="daily-digest-overview-summary">
+						{ item.summary || '' }
+					</span>
+				),
 			},
 		],
 		[]

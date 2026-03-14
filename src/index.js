@@ -53,11 +53,13 @@ const renderProviderIcon = ( provider ) => {
 	if ( logo ) {
 		return (
 			<span
-				className="daily-digest-provider-icon"
+				className="daily-digest-provider-icon-cell"
 				title={ logo.name }
 				aria-label={ logo.name }
 			>
-				<img src={ logo.src } alt="" aria-hidden="true" />
+				<span className="daily-digest-provider-icon">
+					<img src={ logo.src } alt="" aria-hidden="true" />
+				</span>
 			</span>
 		);
 	}
@@ -67,11 +69,13 @@ const renderProviderIcon = ( provider ) => {
 
 	return (
 		<span
-			className="daily-digest-provider-icon daily-digest-provider-icon-fallback"
+			className="daily-digest-provider-icon-cell"
 			title={ providerLabel }
 			aria-label={ providerLabel }
 		>
-			{ fallbackText }
+			<span className="daily-digest-provider-icon daily-digest-provider-icon-fallback">
+				{ fallbackText }
+			</span>
 		</span>
 	);
 };

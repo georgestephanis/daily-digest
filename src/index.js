@@ -159,8 +159,6 @@ const getDatePlusDays = ( dateStr, days ) => {
 };
 
 const loadInitialDates = ( config ) => {
-	const today = getTodayDate( config );
-
 	try {
 		const storedValue = window.localStorage.getItem(
 			buildDateStorageKey( config )
@@ -183,6 +181,7 @@ const loadInitialDates = ( config ) => {
 		}
 	} catch ( error ) {}
 
+	const today = getTodayDate( config );
 	return { startDate: today, endDate: today, isRange: false };
 };
 
@@ -492,8 +491,12 @@ const App = ( { config } ) => {
 						/>
 					</>
 				) }
-				<label className="daily-digest-range-toggle">
+				<label
+					htmlFor="daily-digest-range-toggle"
+					className="daily-digest-range-toggle"
+				>
 					<input
+						id="daily-digest-range-toggle"
 						type="checkbox"
 						checked={ isRange }
 						onChange={ ( event ) => {

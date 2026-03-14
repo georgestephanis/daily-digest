@@ -40,6 +40,24 @@
 		line-height: 1.35;
 	}
 
+	.daily-digest-overview-time-cell {
+		display: inline-flex;
+		flex-direction: column;
+		align-items: flex-start;
+		line-height: 1.2;
+		white-space: nowrap;
+	}
+
+	.daily-digest-overview-time-main {
+		font-variant-numeric: tabular-nums;
+	}
+
+	.daily-digest-overview-time-date {
+		opacity: 0.5;
+		font-size: 11px;
+		margin-top: 1px;
+	}
+
 	.dataviews-view-table tbody .daily-digest-overview-title a {
 		white-space: inherit;
 		overflow-wrap: inherit;

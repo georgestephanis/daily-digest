@@ -20,6 +20,14 @@ const defaultLayouts = {
 	table: {
 		layout: {
 			primaryField: 'title',
+			styles: {
+				provider: {
+					align: 'center',
+					width: '68px',
+					minWidth: '68px',
+					maxWidth: '68px',
+				},
+			},
 		},
 	},
 	grid: {
@@ -82,18 +90,33 @@ const renderProviderIcon = ( provider ) => {
 
 const formatTimestamp = ( value ) => {
 	if ( ! value ) {
-		return '';
+		return { timeWithZone: '', dateLabel: '' };
 	}
 
 	const parsed = new Date( value );
 	if ( Number.isNaN( parsed.getTime() ) ) {
-		return value;
+		return {
+			timeWithZone: value,
+			dateLabel: '',
+		};
 	}
 
-	return parsed.toLocaleString( undefined, {
-		dateStyle: 'medium',
-		timeStyle: 'medium',
+	const timeWithZone = parsed.toLocaleTimeString( undefined, {
+		hour: 'numeric',
+		minute: '2-digit',
+		timeZoneName: 'short',
 	} );
+
+	const dateLabel = parsed.toLocaleDateString( undefined, {
+		month: 'short',
+		day: 'numeric',
+		year: 'numeric',
+	} );
+
+	return {
+		timeWithZone,
+		dateLabel,
+	};
 };
 
 const getDefaultView = () => ( {
@@ -168,6 +191,14 @@ const loadPersistedView = ( config ) => {
 		return {
 			...getDefaultView(),
 			...parsed,
+			layout: {
+				...getDefaultView().layout,
+				...( parsed.layout || {} ),
+				styles: {
+					...( getDefaultView().layout?.styles || {} ),
+					...( parsed.layout?.styles || {} ),
+				},
+			},
 			fields: Array.isArray( parsed.fields )
 				? parsed.fields
 				: getDefaultView().fields,
@@ -190,7 +221,24 @@ const App = ( { config } ) => {
 				id: 'timestamp',
 				label: __( 'Time', 'daily-digest' ),
 				enableGlobalSearch: true,
-				render: ( { item } ) => formatTimestamp( item.timestamp ),
+				render: ( { item } ) => {
+					const { timeWithZone, dateLabel } = formatTimestamp(
+						item.timestamp
+					);
+
+					return (
+						<span className="daily-digest-overview-time-cell">
+							<span className="daily-digest-overview-time-main">
+								{ timeWithZone }
+							</span>
+							{ dateLabel && (
+								<span className="daily-digest-overview-time-date">
+									{ dateLabel }
+								</span>
+							) }
+						</span>
+					);
+				},
 			},
 			{
 				id: 'provider',

@@ -252,6 +252,29 @@ class AdminPage {
 	}
 
 	/**
+	 * Returns the inline SVG markup for a provider logo, or an empty string if not found.
+	 *
+	 * Reads the plugin-owned static asset directly; no user input is involved.
+	 *
+	 * @param string $provider_slug Provider slug.
+	 *
+	 * @return string
+	 */
+	private function get_provider_icon_svg( string $provider_slug ): string {
+		$safe_slug = \sanitize_key( $provider_slug );
+		$path      = DAILY_DIGEST_PLUGIN_PATH . 'src/assets/provider-logos/' . $safe_slug . '.svg';
+
+		if ( ! \file_exists( $path ) ) {
+			return '';
+		}
+
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- reading plugin-owned static SVG asset.
+		$content = \file_get_contents( $path );
+
+		return false !== $content ? $content : '';
+	}
+
+	/**
 	 * Renders provider settings page for the current user.
 	 */
 	public function render_settings_page(): void {
@@ -268,7 +291,7 @@ class AdminPage {
 		?>
 		<div class="wrap">
 			<h1><?php \esc_html_e( 'Daily Digest Connections', 'daily-digest' ); ?></h1>
-			<p><?php \esc_html_e( 'Enable providers with the toggle below. Detailed connection metadata is available on demand.', 'daily-digest' ); ?></p>
+			<p><?php \esc_html_e( 'Enable providers and manage connections below.', 'daily-digest' ); ?></p>
 			<?php if ( ! $keyring_ready ) : ?>
 				<div class="notice notice-warning inline"><p><?php \esc_html_e( 'Keyring is not available. Provider connections cannot be created.', 'daily-digest' ); ?></p></div>
 			<?php endif; ?>
@@ -284,70 +307,79 @@ class AdminPage {
 
 			<form method="post" id="daily-digest-settings-form" data-rest-root="<?php echo \esc_attr( $rest_root ); ?>" data-rest-nonce="<?php echo \esc_attr( $nonce ); ?>">
 				<?php \wp_nonce_field( 'daily_digest_save_settings', 'daily_digest_nonce' ); ?>
-				<table class="form-table" role="presentation">
-					<tbody>
-						<?php foreach ( $this->provider_registry->all() as $provider ) : ?>
-							<?php
-							$slug              = $provider->get_slug();
-							$provider_settings = $current_settings[ $slug ] ?? array();
-							$enabled           = ! empty( $provider_settings['enabled'] );
-							$fields            = $provider_settings['fields'] ?? array();
-							$connected         = $this->keyring_connections->has_connection( $slug, $current_user_id );
-							$connection_meta   = $this->keyring_connections->get_connection_meta_for_user( $slug, $current_user_id );
-							$service_exists    = $this->keyring_connections->has_service( $slug );
-							$service_ready     = $this->keyring_connections->is_service_configured( $slug );
-							$can_test_provider = $service_exists && $service_ready;
-							$meta_summary      = $this->get_connection_meta_summary( $slug, $connection_meta );
-							?>
-							<tr data-provider="<?php echo \esc_attr( $slug ); ?>">
-								<th scope="row"><?php echo \esc_html( $provider->get_name() ); ?></th>
-								<td>
-									<label>
-										<input type="checkbox" class="daily-digest-provider-toggle" name="daily_digest_settings[<?php echo \esc_attr( $slug ); ?>][enabled]" value="1" <?php \checked( $enabled ); ?> />
-										<?php \esc_html_e( 'Enable provider', 'daily-digest' ); ?>
-									</label>
-									<?php foreach ( $provider->get_fields() as $field_key => $field_label ) : ?>
-										<p>
-											<label>
-												<?php echo \esc_html( $field_label ); ?><br />
-												<input class="regular-text" type="text" name="daily_digest_settings[<?php echo \esc_attr( $slug ); ?>][fields][<?php echo \esc_attr( $field_key ); ?>]" value="<?php echo \esc_attr( $fields[ $field_key ] ?? '' ); ?>" />
-											</label>
-										</p>
-									<?php endforeach; ?>
+				<div class="daily-digest-provider-cards">
+					<?php foreach ( $this->provider_registry->all() as $provider ) : ?>
+						<?php
+						$slug              = $provider->get_slug();
+						$provider_settings = $current_settings[ $slug ] ?? array();
+						$enabled           = ! empty( $provider_settings['enabled'] );
+						$fields            = $provider_settings['fields'] ?? array();
+						$connected         = $this->keyring_connections->has_connection( $slug, $current_user_id );
+						$connection_meta   = $this->keyring_connections->get_connection_meta_for_user( $slug, $current_user_id );
+						$service_exists    = $this->keyring_connections->has_service( $slug );
+						$service_ready     = $this->keyring_connections->is_service_configured( $slug );
+						$can_test_provider = $service_exists && $service_ready;
+						$meta_summary      = $this->get_connection_meta_summary( $slug, $connection_meta );
+						$icon_svg          = $this->get_provider_icon_svg( $slug );
+						?>
+						<div class="daily-digest-provider-card" data-provider="<?php echo \esc_attr( $slug ); ?>">
+							<div class="daily-digest-provider-card-header">
+								<span class="daily-digest-provider-card-name"><?php echo \esc_html( $provider->get_name() ); ?></span>
+								<?php if ( $icon_svg ) : ?>
+									<span class="daily-digest-provider-card-icon" aria-hidden="true">
+										<?php
+										// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- plugin-owned static SVG asset, no user input.
+										echo $icon_svg;
+										?>
+									</span>
+								<?php endif; ?>
+							</div>
+							<div class="daily-digest-provider-card-body">
+								<label>
+									<input type="checkbox" class="daily-digest-provider-toggle" name="daily_digest_settings[<?php echo \esc_attr( $slug ); ?>][enabled]" value="1" <?php \checked( $enabled ); ?> />
+									<?php \esc_html_e( 'Enable provider', 'daily-digest' ); ?>
+								</label>
+								<?php foreach ( $provider->get_fields() as $field_key => $field_label ) : ?>
+									<p>
+										<label>
+											<?php echo \esc_html( $field_label ); ?><br />
+											<input class="regular-text" type="text" name="daily_digest_settings[<?php echo \esc_attr( $slug ); ?>][fields][<?php echo \esc_attr( $field_key ); ?>]" value="<?php echo \esc_attr( $fields[ $field_key ] ?? '' ); ?>" />
+										</label>
+									</p>
+								<?php endforeach; ?>
+								<?php if ( $connected ) : ?>
+									<p class="description">
+										<?php
+										/* translators: %s is a short connected-account summary, such as username/team. */
+										echo \esc_html( sprintf( __( 'Connected as %s.', 'daily-digest' ), $meta_summary ) );
+										?>
+									</p>
+									<details>
+										<summary><?php \esc_html_e( 'View connection details', 'daily-digest' ); ?></summary>
+										<p><?php echo \wp_kses_post( $this->render_connection_meta( $slug, $connection_meta ) ); ?></p>
+									</details>
+								<?php endif; ?>
+								<?php if ( $service_exists && ! $service_ready ) : ?>
+									<p class="description">
+										<?php \esc_html_e( 'Keyring credentials are not configured for this provider yet.', 'daily-digest' ); ?>
+									</p>
+								<?php endif; ?>
+								<div class="daily-digest-provider-actions">
+									<button type="button" class="button button-secondary daily-digest-provider-action-button daily-digest-test-credentials" data-provider="<?php echo \esc_attr( $slug ); ?>" data-keyring-configured="<?php echo $can_test_provider ? '1' : '0'; ?>" <?php echo $can_test_provider ? '' : 'disabled="disabled" aria-disabled="true"'; ?>>
+										<?php \esc_html_e( 'Test Connection', 'daily-digest' ); ?>
+									</button>
 									<?php if ( $connected ) : ?>
-										<p class="description">
-											<?php
-											/* translators: %s is a short connected-account summary, such as username/team. */
-											echo \esc_html( sprintf( __( 'Connected as %s.', 'daily-digest' ), $meta_summary ) );
-											?>
-										</p>
-										<details>
-											<summary><?php \esc_html_e( 'View connection details', 'daily-digest' ); ?></summary>
-											<p><?php echo wp_kses_post( $this->render_connection_meta( $slug, $connection_meta ) ); ?></p>
-										</details>
-									<?php endif; ?>
-									<?php if ( $service_exists && ! $service_ready ) : ?>
-										<p class="description">
-											<?php \esc_html_e( 'Keyring credentials are not configured for this provider yet.', 'daily-digest' ); ?>
-										</p>
-									<?php endif; ?>
-									<div class="daily-digest-provider-actions">
-										<button type="button" class="button button-secondary daily-digest-provider-action-button daily-digest-test-credentials" data-provider="<?php echo \esc_attr( $slug ); ?>" data-keyring-configured="<?php echo $can_test_provider ? '1' : '0'; ?>" <?php echo $can_test_provider ? '' : 'disabled="disabled" aria-disabled="true"'; ?>>
-											<?php \esc_html_e( 'Test Connection', 'daily-digest' ); ?>
+										<button type="button" class="button button-secondary daily-digest-provider-action-button daily-digest-provider-action-button-danger daily-digest-disconnect-provider" data-provider="<?php echo \esc_attr( $slug ); ?>">
+											<?php \esc_html_e( 'Disconnect', 'daily-digest' ); ?>
 										</button>
-										<?php if ( $connected ) : ?>
-											<button type="button" class="button button-secondary daily-digest-provider-action-button daily-digest-provider-action-button-danger daily-digest-disconnect-provider" data-provider="<?php echo \esc_attr( $slug ); ?>">
-												<?php \esc_html_e( 'Disconnect', 'daily-digest' ); ?>
-											</button>
-										<?php endif; ?>
-										<span class="daily-digest-test-result" id="daily-digest-test-result-<?php echo \esc_attr( $slug ); ?>"></span>
-										<span class="daily-digest-save-result" id="daily-digest-save-result-<?php echo \esc_attr( $slug ); ?>"></span>
-									</div>
-								</td>
-							</tr>
-						<?php endforeach; ?>
-					</tbody>
-				</table>
+									<?php endif; ?>
+									<span class="daily-digest-test-result" id="daily-digest-test-result-<?php echo \esc_attr( $slug ); ?>"></span>
+									<span class="daily-digest-save-result" id="daily-digest-save-result-<?php echo \esc_attr( $slug ); ?>"></span>
+								</div>
+							</div>
+						</div>
+					<?php endforeach; ?>
+				</div>
 			</form>
 		</div>
 		<?php

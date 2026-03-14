@@ -35,6 +35,7 @@ const defaultLayouts = {
 	grid: {
 		layout: {
 			primaryField: 'title',
+			mediaField: 'provider',
 		},
 	},
 };

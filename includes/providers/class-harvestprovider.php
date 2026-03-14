@@ -38,17 +38,6 @@ class HarvestProvider extends AbstractProvider {
 	}
 
 	/**
-	 * Returns Harvest provider field definitions.
-	 *
-	 * @return array
-	 */
-	public function get_fields(): array {
-		return array(
-			'account_id' => __( 'Account ID (optional override)', 'daily-digest' ),
-		);
-	}
-
-	/**
 	 * Returns the default Keyring service name for Harvest.
 	 *
 	 * @return string
@@ -67,7 +56,7 @@ class HarvestProvider extends AbstractProvider {
 	public function test_credentials( array $provider_fields ): array {
 		$user_id    = \get_current_user_id();
 		$token      = $this->get_token( $user_id );
-		$account_id = $this->resolve_account_id( $user_id, $provider_fields );
+		$account_id = $this->resolve_account_id( $user_id );
 
 		if ( empty( $token ) ) {
 			return array(
@@ -177,7 +166,7 @@ class HarvestProvider extends AbstractProvider {
 			return array();
 		}
 
-		$account_id = $this->resolve_account_id( $user_id, $fields );
+		$account_id = $this->resolve_account_id( $user_id );
 		if ( '' === $account_id ) {
 			return array();
 		}
@@ -265,18 +254,13 @@ class HarvestProvider extends AbstractProvider {
 	}
 
 	/**
-	 * Resolves Harvest account ID from provider fields or token metadata.
+	 * Resolves Harvest account ID from token metadata.
 	 *
-	 * @param int   $user_id User ID.
-	 * @param array $fields  Provider field values.
+	 * @param int $user_id User ID.
 	 *
 	 * @return string
 	 */
-	private function resolve_account_id( int $user_id, array $fields ): string {
-		if ( ! empty( $fields['account_id'] ) ) {
-			return trim( (string) $fields['account_id'] );
-		}
-
+	private function resolve_account_id( int $user_id ): string {
 		$meta_account_id = $this->get_token_meta( $user_id, 'account_id' );
 		if ( \is_scalar( $meta_account_id ) && '' !== trim( (string) $meta_account_id ) ) {
 			return trim( (string) $meta_account_id );

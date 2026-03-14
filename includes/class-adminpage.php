@@ -467,6 +467,7 @@ class AdminPage {
 		$priority_keys = array(
 			'github'  => array( 'name', 'username', 'profile_url' ),
 			'clickup' => array( 'name', 'username', 'team_names', 'user_id' ),
+			'harvest' => array( 'name', 'email', 'account_name', 'account_id', 'user_id' ),
 			'slack'   => array( 'user', 'name', 'team', 'team_domain', 'user_id' ),
 		);
 
@@ -506,6 +507,13 @@ class AdminPage {
 				'user_id'         => __( 'User ID', 'daily-digest' ),
 				'team_names'      => __( 'Teams', 'daily-digest' ),
 				'default_team_id' => __( 'Default Team ID', 'daily-digest' ),
+			),
+			'harvest' => array(
+				'name'         => __( 'Name', 'daily-digest' ),
+				'email'        => __( 'Email', 'daily-digest' ),
+				'user_id'      => __( 'User ID', 'daily-digest' ),
+				'account_name' => __( 'Account', 'daily-digest' ),
+				'account_id'   => __( 'Account ID', 'daily-digest' ),
 			),
 			'slack'   => array(
 				'user'        => __( 'Account', 'daily-digest' ),

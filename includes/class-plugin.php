@@ -11,6 +11,7 @@ namespace DailyDigest;
 
 use DailyDigest\Providers\ClickupProvider;
 use DailyDigest\Providers\GithubProvider;
+use DailyDigest\Providers\HarvestProvider;
 use DailyDigest\Providers\SlackProvider;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -155,6 +156,7 @@ class Plugin {
 	private function register_builtin_providers(): void {
 		$this->provider_registry->register( new GithubProvider( $this->keyring_connections ) );
 		$this->provider_registry->register( new ClickupProvider( $this->keyring_connections ) );
+		$this->provider_registry->register( new HarvestProvider( $this->keyring_connections ) );
 		$this->provider_registry->register( new SlackProvider( $this->keyring_connections ) );
 	}
 

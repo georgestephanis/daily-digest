@@ -15,6 +15,7 @@ import { initSettingsPage } from './settings-page';
 import slackLogo from './assets/provider-logos/slack.svg';
 import clickupLogo from './assets/provider-logos/clickup.svg';
 import githubLogo from './assets/provider-logos/github.svg';
+import harvestLogo from './assets/provider-logos/harvest.svg';
 import './style.scss';
 
 const defaultLayouts = {
@@ -50,6 +51,10 @@ const providerLogos = {
 	github: {
 		name: 'GitHub',
 		src: githubLogo,
+	},
+	harvest: {
+		name: 'Harvest',
+		src: harvestLogo,
 	},
 };
 
@@ -309,7 +314,11 @@ const App = ( { config } ) => {
 		setErrorMessage( '' );
 
 		const response = await window.fetch(
-			`${ config.restRoot }/digest?start_date=${ window.encodeURIComponent( startDate ) }&end_date=${ window.encodeURIComponent( endDate ) }`,
+			`${
+				config.restRoot
+			}/digest?start_date=${ window.encodeURIComponent(
+				startDate
+			) }&end_date=${ window.encodeURIComponent( endDate ) }`,
 			{
 				headers: {
 					'X-WP-Nonce': config.restNonce,
@@ -450,7 +459,11 @@ const App = ( { config } ) => {
 						} else if ( newEnd > maxEnd ) {
 							newEnd = maxEnd;
 						}
-						setDates( { startDate: newStart, endDate: newEnd, isRange } );
+						setDates( {
+							startDate: newStart,
+							endDate: newEnd,
+							isRange,
+						} );
 					} }
 				/>
 				{ isRange && (
@@ -470,7 +483,11 @@ const App = ( { config } ) => {
 								if ( ! newEnd ) {
 									return;
 								}
-								setDates( { startDate, endDate: newEnd, isRange } );
+								setDates( {
+									startDate,
+									endDate: newEnd,
+									isRange,
+								} );
 							} }
 						/>
 					</>

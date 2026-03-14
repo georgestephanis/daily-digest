@@ -172,7 +172,7 @@ const loadInitialDates = ( config ) => {
 					/^\d{4}-\d{2}-\d{2}$/.test( parsed.endDate )
 						? parsed.endDate
 						: startDate;
-				const isRange = startDate !== endDate || Boolean( parsed.isRange );
+				const isRange = Boolean( parsed.isRange );
 				return { startDate, endDate, isRange };
 			}
 		}

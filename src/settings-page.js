@@ -257,9 +257,9 @@ export const initSettingsPage = () => {
 
 	providerToggles.forEach( ( toggle ) => {
 		toggle.addEventListener( 'change', async () => {
-			const row = toggle.closest( 'tr[data-provider]' );
-			const provider = row
-				? row.getAttribute( 'data-provider' ) || ''
+			const card = toggle.closest( '[data-provider]' );
+			const provider = card
+				? card.getAttribute( 'data-provider' ) || ''
 				: '';
 			await saveProviderState( provider );
 		} );

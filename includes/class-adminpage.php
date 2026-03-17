@@ -380,6 +380,7 @@ class AdminPage {
 						</div>
 					<?php endforeach; ?>
 				</div>
+				<?php \submit_button( \__( 'Save Settings', 'daily-digest' ) ); ?>
 			</form>
 		</div>
 		<?php

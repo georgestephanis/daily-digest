@@ -160,6 +160,7 @@ const getDatePlusDays = ( dateStr, days ) => {
 };
 
 const loadInitialDates = ( config ) => {
+	const today = getTodayDate( config );
 	try {
 		const storedValue = window.localStorage.getItem(
 			buildDateStorageKey( config )
@@ -170,19 +171,20 @@ const loadInitialDates = ( config ) => {
 				parsed?.startDate &&
 				/^\d{4}-\d{2}-\d{2}$/.test( parsed.startDate )
 			) {
-				const startDate = parsed.startDate;
-				const endDate =
+				const startDate =
+					parsed.startDate > today ? today : parsed.startDate;
+				const rawEnd =
 					parsed.endDate &&
 					/^\d{4}-\d{2}-\d{2}$/.test( parsed.endDate )
 						? parsed.endDate
 						: startDate;
+				const endDate = rawEnd > today ? today : rawEnd;
 				const isRange = Boolean( parsed.isRange );
 				return { startDate, endDate, isRange };
 			}
 		}
 	} catch ( error ) {}
 
-	const today = getTodayDate( config );
 	return { startDate: today, endDate: today, isRange: false };
 };
 
@@ -221,6 +223,7 @@ const loadPersistedView = ( config ) => {
 };
 
 const App = ( { config } ) => {
+	const today = getTodayDate( config );
 	const [ { startDate, endDate, isRange }, setDates ] = useState( () =>
 		loadInitialDates( config )
 	);
@@ -447,20 +450,26 @@ const App = ( { config } ) => {
 					className="daily-digest-overview-date"
 					type="date"
 					value={ startDate }
+					max={ today }
 					onChange={ ( event ) => {
 						const newStart = event.target.value;
 						if ( ! newStart ) {
 							return;
 						}
-						const maxEnd = getDatePlusDays( newStart, 6 );
-						let newEnd = isRange ? endDate : newStart;
-						if ( newEnd < newStart ) {
-							newEnd = newStart;
+						const clampedStart =
+							newStart > today ? today : newStart;
+						const maxEnd = getDatePlusDays( clampedStart, 6 );
+						let newEnd = isRange ? endDate : clampedStart;
+						if ( newEnd < clampedStart ) {
+							newEnd = clampedStart;
 						} else if ( newEnd > maxEnd ) {
 							newEnd = maxEnd;
 						}
+						if ( newEnd > today ) {
+							newEnd = today;
+						}
 						setDates( {
-							startDate: newStart,
+							startDate: clampedStart,
 							endDate: newEnd,
 							isRange,
 						} );
@@ -477,7 +486,11 @@ const App = ( { config } ) => {
 							type="date"
 							value={ endDate }
 							min={ startDate }
-							max={ getDatePlusDays( startDate, 6 ) }
+							max={
+								getDatePlusDays( startDate, 6 ) < today
+									? getDatePlusDays( startDate, 6 )
+									: today
+							}
 							onChange={ ( event ) => {
 								const newEnd = event.target.value;
 								if ( ! newEnd ) {
@@ -485,12 +498,27 @@ const App = ( { config } ) => {
 								}
 								setDates( {
 									startDate,
-									endDate: newEnd,
+									endDate:
+										newEnd > today ? today : newEnd,
 									isRange,
 								} );
 							} }
 						/>
 					</>
+				) }
+				{ startDate !== today && (
+					<Button
+						variant="link"
+						onClick={ () =>
+							setDates( {
+								startDate: today,
+								endDate: today,
+								isRange,
+							} )
+						}
+					>
+						{ __( 'Jump to today', 'daily-digest' ) }
+					</Button>
 				) }
 				<label
 					htmlFor="daily-digest-range-toggle"

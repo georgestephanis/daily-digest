@@ -1,0 +1,30 @@
+# Development dependencies and sources
+node_modules/
+vendor/
+src/
+
+# Tooling and project config
+.editorconfig
+.eslint*
+.git/
+.gitattributes
+.github/
+.gitignore
+.nvmrc
+.distignore
+.vscode/
+phpcs.xml.dist
+composer.json
+composer.lock
+package.json
+package-lock.json
+yarn.lock
+
+# Documentation and local notes
+README.md
+
+# Build and local artifacts
+*.log
+*.map
+*.zip
+.DS_Store

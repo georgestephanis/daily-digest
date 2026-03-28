@@ -16,6 +16,7 @@ import slackLogo from './assets/provider-logos/slack.svg';
 import clickupLogo from './assets/provider-logos/clickup.svg';
 import githubLogo from './assets/provider-logos/github.svg';
 import harvestLogo from './assets/provider-logos/harvest.svg';
+import asanaLogo from './assets/provider-logos/asana.svg';
 import './style.scss';
 
 const defaultLayouts = {
@@ -56,6 +57,10 @@ const providerLogos = {
 	harvest: {
 		name: 'Harvest',
 		src: harvestLogo,
+	},
+	asana: {
+		name: 'Asana',
+		src: asanaLogo,
 	},
 };
 
@@ -498,8 +503,7 @@ const App = ( { config } ) => {
 								}
 								setDates( {
 									startDate,
-									endDate:
-										newEnd > today ? today : newEnd,
+									endDate: newEnd > today ? today : newEnd,
 									isRange,
 								} );
 							} }

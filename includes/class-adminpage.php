@@ -492,6 +492,7 @@ class AdminPage {
 		}
 
 		$priority_keys = array(
+			'asana'   => array( 'name', 'email', 'workspace_names', 'user_id' ),
 			'github'  => array( 'name', 'username', 'profile_url' ),
 			'clickup' => array( 'name', 'username', 'team_names', 'user_id' ),
 			'harvest' => array( 'name', 'email', 'account_name', 'account_id', 'user_id' ),
@@ -523,6 +524,13 @@ class AdminPage {
 	 */
 	private function get_connection_meta_labels( string $provider_slug ): array {
 		$map = array(
+			'asana'   => array(
+				'name'                 => __( 'Name', 'daily-digest' ),
+				'email'                => __( 'Email', 'daily-digest' ),
+				'user_id'              => __( 'User ID', 'daily-digest' ),
+				'workspace_names'      => __( 'Workspaces', 'daily-digest' ),
+				'default_workspace_id' => __( 'Default Workspace ID', 'daily-digest' ),
+			),
 			'github'  => array(
 				'name'        => __( 'Name', 'daily-digest' ),
 				'username'    => __( 'Username', 'daily-digest' ),

@@ -8,7 +8,7 @@ Stable tag: 0.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-A framework plugin that aggregates per-user activity from multiple providers (GitHub, ClickUp, Slack, and custom providers).
+A framework plugin that aggregates per-user activity from multiple providers (Asana, GitHub, ClickUp, Harvest, Slack, and custom providers).
 
 == Description ==
 
@@ -24,6 +24,8 @@ Built-in providers currently expose extension points and settings fields, and ca
 
 * daily_digest_provider_github_activity
 * daily_digest_provider_clickup_activity
+* daily_digest_provider_harvest_activity
+* daily_digest_provider_asana_activity
 * daily_digest_provider_slack_activity
 
 Each filter should return an array of activity items with at least:
@@ -42,7 +44,7 @@ Optional fields:
 
 1. Upload the daily-digest folder to the /wp-content/plugins/ directory.
 2. Activate the plugin through the Plugins menu in WordPress.
-3. Go to Daily Digest > Settings.
+3. Go to Daily Digest > Connections.
 4. Enable providers and connect each provider through Keyring.
 
 == Provider Authentication Setup ==
@@ -64,6 +66,10 @@ ClickUp uses OAuth in Keyring:
 2. In Tools > Keyring > Daily Digest ClickUp > Manage, set API Key = client_id and API Secret = secret.
 3. Add the callback URL from that Keyring manage screen as a Redirect URL in ClickUp app settings.
 4. Connect ClickUp via Keyring and complete authorization.
+* Asana
+  * Create an app: https://developers.asana.com/docs/create-an-app
+  * OAuth guide: https://developers.asana.com/docs/oauth
+  * API reference: https://developers.asana.com/reference/rest-api-reference
 * Slack
   * Create/manage app: https://api.slack.com/apps
   * Installing with OAuth: https://docs.slack.dev/authentication/installing-with-oauth
@@ -80,7 +86,7 @@ Slack setup steps:
 2. In OAuth & Permissions, add the user token scope search:read.
 3. Add the Keyring callback URL shown in Tools > Keyring > Daily Digest Slack > Manage as a Redirect URL.
 4. In Keyring manage screen for Daily Digest Slack, enter Client ID (API Key) and Client Secret (API Secret), then save.
-5. Use Connect via Keyring in Daily Digest > Settings, complete Slack authorization, and run Test Connection.
+5. Use Connect via Keyring in Daily Digest > Connections, complete Slack authorization, and run Test Connection.
 
 == Extending ==
 
@@ -96,7 +102,7 @@ Where $provider_registry is an instance of DailyDigest\ProviderRegistry.
 
 Most empty digest results are caused by one of these:
 
-* The provider is not enabled in Daily Digest > Settings.
+* The provider is not enabled in Daily Digest > Connections.
 * Keyring connection is missing or invalid for the provider.
 * The selected time window has no matching activity.
 

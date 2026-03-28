@@ -24,6 +24,7 @@ Built-in providers currently expose extension points and settings fields, and ca
 
 * daily_digest_provider_github_activity
 * daily_digest_provider_clickup_activity
+* daily_digest_provider_harvest_activity
 * daily_digest_provider_asana_activity
 * daily_digest_provider_slack_activity
 
@@ -43,7 +44,7 @@ Optional fields:
 
 1. Upload the daily-digest folder to the /wp-content/plugins/ directory.
 2. Activate the plugin through the Plugins menu in WordPress.
-3. Go to Daily Digest > Settings.
+3. Go to Daily Digest > Connections.
 4. Enable providers and connect each provider through Keyring.
 
 == Provider Authentication Setup ==
@@ -85,7 +86,7 @@ Slack setup steps:
 2. In OAuth & Permissions, add the user token scope search:read.
 3. Add the Keyring callback URL shown in Tools > Keyring > Daily Digest Slack > Manage as a Redirect URL.
 4. In Keyring manage screen for Daily Digest Slack, enter Client ID (API Key) and Client Secret (API Secret), then save.
-5. Use Connect via Keyring in Daily Digest > Settings, complete Slack authorization, and run Test Connection.
+5. Use Connect via Keyring in Daily Digest > Connections, complete Slack authorization, and run Test Connection.
 
 == Extending ==
 
@@ -101,7 +102,7 @@ Where $provider_registry is an instance of DailyDigest\ProviderRegistry.
 
 Most empty digest results are caused by one of these:
 
-* The provider is not enabled in Daily Digest > Settings.
+* The provider is not enabled in Daily Digest > Connections.
 * Keyring connection is missing or invalid for the provider.
 * The selected time window has no matching activity.
 

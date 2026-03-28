@@ -1,11 +1,13 @@
 # Development dependencies and sources
+
 node_modules/
 vendor/
 src/
 
 # Tooling and project config
+
 .editorconfig
-.eslint*
+.eslint\*
 .git/
 .gitattributes
 .github/
@@ -21,10 +23,13 @@ package-lock.json
 yarn.lock
 
 # Documentation and local notes
+
 README.md
+AGENTS.md
 
 # Build and local artifacts
-*.log
-*.map
-*.zip
+
+_.log
+_.map
+\*.zip
 .DS_Store

@@ -5,7 +5,7 @@ Daily Digest is a WordPress plugin that aggregates per-user activity from multip
 ## Features
 
 - Unified digest view rendered in wp-admin with React + DataViews.
-- Provider-based architecture with built-in GitHub, ClickUp, and Slack adapters.
+- Provider-based architecture with built-in Asana, GitHub, ClickUp, Harvest, and Slack adapters.
 - Per-user Keyring-backed provider connections with enable/disable settings.
 - Admin-only logging tools and log viewer page.
 - REST API endpoints for digest loading, provider credential testing/saving, and log retrieval.
@@ -52,6 +52,12 @@ ClickUp uses OAuth in Keyring:
 - Installing with OAuth: https://docs.slack.dev/authentication/installing-with-oauth
 - `search:read` scope reference: https://docs.slack.dev/reference/scopes/search.read
 - `auth.test` method reference: https://docs.slack.dev/reference/methods/auth.test
+
+### Asana
+
+- Create an app: https://developers.asana.com/docs/create-an-app
+- OAuth guide: https://developers.asana.com/docs/oauth
+- API reference: https://developers.asana.com/reference/rest-api-reference
 
 ### Connection Metadata
 

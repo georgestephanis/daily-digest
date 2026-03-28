@@ -8,7 +8,7 @@ Stable tag: 0.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-A framework plugin that aggregates per-user activity from multiple providers (GitHub, ClickUp, Slack, and custom providers).
+A framework plugin that aggregates per-user activity from multiple providers (Asana, GitHub, ClickUp, Harvest, Slack, and custom providers).
 
 == Description ==
 
@@ -24,6 +24,7 @@ Built-in providers currently expose extension points and settings fields, and ca
 
 * daily_digest_provider_github_activity
 * daily_digest_provider_clickup_activity
+* daily_digest_provider_asana_activity
 * daily_digest_provider_slack_activity
 
 Each filter should return an array of activity items with at least:
@@ -64,6 +65,10 @@ ClickUp uses OAuth in Keyring:
 2. In Tools > Keyring > Daily Digest ClickUp > Manage, set API Key = client_id and API Secret = secret.
 3. Add the callback URL from that Keyring manage screen as a Redirect URL in ClickUp app settings.
 4. Connect ClickUp via Keyring and complete authorization.
+* Asana
+  * Create an app: https://developers.asana.com/docs/create-an-app
+  * OAuth guide: https://developers.asana.com/docs/oauth
+  * API reference: https://developers.asana.com/reference/rest-api-reference
 * Slack
   * Create/manage app: https://api.slack.com/apps
   * Installing with OAuth: https://docs.slack.dev/authentication/installing-with-oauth

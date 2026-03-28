@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace DailyDigest;
 
+use DailyDigest\Providers\AsanaProvider;
 use DailyDigest\Providers\ClickupProvider;
 use DailyDigest\Providers\GithubProvider;
 use DailyDigest\Providers\HarvestProvider;
@@ -154,6 +155,7 @@ class Plugin {
 	 * Registers built-in provider adapters.
 	 */
 	private function register_builtin_providers(): void {
+		$this->provider_registry->register( new AsanaProvider( $this->keyring_connections ) );
 		$this->provider_registry->register( new GithubProvider( $this->keyring_connections ) );
 		$this->provider_registry->register( new ClickupProvider( $this->keyring_connections ) );
 		$this->provider_registry->register( new HarvestProvider( $this->keyring_connections ) );
